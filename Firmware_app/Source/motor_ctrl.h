@@ -204,6 +204,15 @@ typedef struct {
     tPID PID_Iq;
     tPID PID_vel;
     float PosGain;
+		float Kp;
+		float Kd;
+		float current_mit;      // [A]
+		float pos_set;     // [Count/s]
+		float raw_pos;
+		float raw_vel;
+		float raw_tor;
+
+
 } tMotorControl;
 
 extern tMotorControl MotorControl;

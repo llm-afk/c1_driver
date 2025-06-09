@@ -141,7 +141,7 @@ static inline void send_to_host_or_enqueue(CanFrame *tx_frame)
         fifoBuf_putData(tx_fifo, tx_frame, sizeof(CanFrame));
     }
 }
-
+float recv_tor = 0.0f;
 static void parse_frame(CanFrame *frame)
 {
     switch(GET_MSG_ID(frame->id)){
@@ -211,7 +211,34 @@ static void parse_frame(CanFrame *frame)
             *(uint16_t*)&frame->data[4] = STATUS_WORD;
             send_to_host_or_enqueue(frame);
             break;
-        
+        case MSG_ID_RPDO_5:
+            if(GET_NODE_ID(frame->id) != mNodeID) break;
+
+//            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
+//            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
+//            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
+				
+				
+						MotorControl.pos_set = *(float*)&frame->data[0];
+						MotorControl.velocity_set = *(float*)&frame->data[4];
+						MotorControl.current_mit = *(float*)&frame->data[8];
+						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
+						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
+//            MC_pdo_profile_torque(*(float*)&frame->data[8], 0.1f);
+
+            // tx msg
+            frame->id = MSG_ID_TPDO_5 + mNodeID;
+            frame->dlc = 9;
+				
+//            *(float*)&frame->data[0] = MotorControl.position_cmd;
+//            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
+//						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
+//				
+            *(float*)&frame->data[0] = MotorControl.raw_pos;
+            *(float*)&frame->data[4] = MotorControl.raw_vel;
+						*(float*)&frame->data[8] = ACTUAL_TORQUE*12.0;
+            send_to_host_or_enqueue(frame);
+            break;
         case MSG_ID_DFU:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
         
