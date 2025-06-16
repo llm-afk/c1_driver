@@ -697,7 +697,6 @@ static void servo_loop(void)
 }
 
 #define ENCODER_RESOLUTION 16384     // 2^14
-#define GEAR_RATIO         12.0f
 #define TWO_PI             6.28318530718f
 
 // 每个编码器计数对应负载端弧度
@@ -712,11 +711,140 @@ float encoder_position_to_rad(int32_t pos_count) {
 float encoder_speed_to_rad_per_sec(int32_t speed_count) {
     return speed_count * RAD_PER_COUNT;
 }
+
+#define ENCODER_RES 16384.0f
+
+float wrap_01(float x) {
+    x = fmodf(x, 1.0f);
+    if (x < 0) x += 1.0f;
+    return x;
+}
+
+// 输入：两个原始编码器值 + 实际减速比
+float get_output_angle_rad(uint32_t raw1, uint32_t raw2, float gear_ratio) {
+    float theta1 = (float)raw1 / ENCODER_RES;  // 编码器 A
+    float theta2 = (float)raw2 / ENCODER_RES;  // 编码器 B
+
+    float delta = wrap_01(theta1 - theta2 * (31.0f / 32.0f));
+    float motor_turns = delta * 32.0f;
+    float output_turns = motor_turns / gear_ratio;
+    return output_turns * 2.0f * M_PI;
+}
 float tau_l;
 float pos_err;
 float vel_err;
 float head_tor;
+
+
+
+//#define ENCODER_RESOLUTION 16384
+//#define TWO_PI 6.28318530718f
+#define PI     3.14159265359f
+// 状态变量
+
+// 状态变量
+static int motor_turns_offset = 0;
+static int last_encoder1_raw = 0;
+
+// 把角度归一化到 [-π, π)
+static float wrap_to_pi(float angle_rad) {
+    while (angle_rad >= PI)  angle_rad -= TWO_PI;
+    while (angle_rad < -PI)  angle_rad += TWO_PI;
+    return angle_rad;
+}
+
+// 编码器原始值 → 弧度 [0, 2π)
+static float encoder_to_angle(int value) {
+    int val = value % ENCODER_RESOLUTION;
+    if (val < 0) val += ENCODER_RESOLUTION;
+    return ((float)val) * TWO_PI / ENCODER_RESOLUTION;
+}
+
+// 初始化函数：通过第二编码器估算第一编码器的绝对圈数
+void init_joint_encoder_angle(
+    int encoder1_raw,  // 电机轴编码器值（小齿轮，32）
+    int encoder2_raw,  // 齿轮连接的编码器值（大齿轮，31）
+    float gear_encoder1,  // 第一编码器齿数（32）
+    float gear_encoder2)  // 第二编码器齿数（31）
+{
+    float G = gear_encoder1 / gear_encoder2;
+
+    float angle1 = encoder_to_angle(encoder1_raw);  // θ1
+    float angle2 = encoder_to_angle(encoder2_raw);  // θ2
+
+    float delta_turns = (angle1 - angle2 / G) / TWO_PI;
+    motor_turns_offset = (int)roundf(delta_turns);
+
+    last_encoder1_raw = encoder1_raw;
+}
+
+// 运行阶段每周期调用：只使用第一编码器持续计算角度
+float update_joint_angle(
+    int encoder1_raw,
+    float reduction_ratio)
+{
+    float angle1 = encoder_to_angle(encoder1_raw);
+
+    // 判断是否跨圈
+    int delta = encoder1_raw - last_encoder1_raw;
+    int delta_turn = 0;
+    if (delta > ENCODER_RESOLUTION / 2) {
+        delta_turn = -1;
+    } else if (delta < -ENCODER_RESOLUTION / 2) {
+        delta_turn = 1;
+    }
+
+    static int extra_turns = 0;
+    extra_turns += delta_turn;
+    last_encoder1_raw = encoder1_raw;
+
+    // 电机轴总角度（rad）
+    float motor_angle = (motor_turns_offset + extra_turns) * TWO_PI + angle1;
+
+    // 输出轴角度（带减速比）
+    float joint_angle = motor_angle / reduction_ratio;
+
+    return wrap_to_pi(joint_angle);
+}
 // Free loop
+int16_t Multi_Turns;
+float out_rad;
+int16_t multi_debug;
+uint16_t Mech_Differ;
+float encoder_raw;
+float encoder_one;
+
+float encoder_two;
+extern float abs_raw;
+extern float abs_round;
+extern int16_t init_multi_turn;
+extern uint16_t init_ex_encoder;
+#define VCC         3.3f           // 分压上拉电压
+#define ADC_MAX     4095.0f        // 12-bit ADC
+#define R_FIXED     10000.0f       // R60 = 10kΩ
+#define R_25        10000.0f      // NTC阻值@25℃
+#define B_VALUE     3950.0f        // B25/50 值
+
+
+// ⚙️ 由ADC值计算NTC电阻
+static inline float calc_ntc_resistance(uint16_t adc_value) {
+    float v_out = (float)adc_value / ADC_MAX * VCC;
+    return (v_out * R_FIXED) / (VCC - v_out);
+}
+
+// ⚙️ 由NTC电阻计算温度（单位：摄氏度）
+static inline float calc_temperature_celsius(float r_ntc) {
+    float temp_k = 1.0f / (1.0f / (25.0f + 273.15f) + logf(r_ntc / R_25) / B_VALUE);
+    return temp_k - 273.15f;
+}
+
+// ✅ 主函数调用：获取温度值
+static inline float get_ntc_temperature(void) {
+    uint16_t adc = adc_buff[1];
+    float r_ntc = calc_ntc_resistance(adc);
+    return calc_temperature_celsius(r_ntc);
+}
+
 void MC_low_priority_task(void)
 {
     static uint32_t tick_100 = 0;
@@ -725,7 +853,7 @@ void MC_low_priority_task(void)
     
     static bool is_plot = false;
     static float last_value = 0;
-    
+    static bool init_multi = true;
     static float over_torque_dpp = 0;
     
     // 100Hz
@@ -753,7 +881,7 @@ void MC_low_priority_task(void)
         }
         
         // motor over temperature check
-        MOTOR_TEMPERATURE = SOC_read_motor_temp();
+        MOTOR_TEMPERATURE = get_ntc_temperature();
         if(MOTOR_TEMPERATURE > OVER_TEMP_MOTOR_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_MOTOR);
         }
@@ -774,6 +902,33 @@ void MC_low_priority_task(void)
         
         // ex encoder value update
         EX_ENCODER_VALUE = ENCODER_EX_read();
+//				if(1){
+////					uint16_t Mech_Angle_Err = 15747;
+////					uint16_t Mech_Angle_Side_Err = 16074;
+//					uint16_t Mech_Angle_Err = 0;
+//					uint16_t Mech_Angle_Side_Err = 0;
+//					uint16_t ex_encder = EX_ENCODER_VALUE;
+//					Mech_Differ = 65535 - (((Encoder.raw << 2) - (Mech_Angle_Err << 2)) -  ((ex_encder << 2) - (Mech_Angle_Side_Err << 2)));
+//					if((uint16_t)((Encoder.raw << 2) - (Mech_Angle_Err << 2)) >= 64535){
+//						Mech_Differ -= 300;
+//					}
+//					if((uint16_t)((Encoder.raw << 2) - (Mech_Angle_Err << 2)) <= 1000){
+//						Mech_Differ += 300;
+//					}					
+//					if(init_multi){
+//						Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+//						 Encoder.shadow_count += Multi_Turns*ENCODER_RESOLUTION;
+//						Encoder.shadow_count -= Mech_Angle_Err;
+//					}
+//					multi_debug = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+////					Multi_Turns = Multi_Turns % 12;
+
+//					init_multi = false;
+//				}
+//				encoder_raw = Encoder.shadow_count;
+//				encoder_one = Encoder.raw;
+//				encoder_two = EX_ENCODER_VALUE;
+				
     }
     
     // 2000Hz for plot
@@ -797,28 +952,28 @@ void MC_low_priority_task(void)
                     curr_value =  pos_err;
                     break;
                 case 5:
-                    curr_value = vel_err;
+                    curr_value = EX_ENCODER_VALUE;
                     break;
                 case 6:
-                    curr_value = DC_LINK_CURRENT;
+                    curr_value = encoder_position_to_rad(Encoder.raw);
                     break;
                 case 7:
-                    curr_value = ELECTRICAL_POWER;
+                    curr_value = abs_raw;
                     break;
                 case 8:
-                    curr_value = MECHANICAL_POWER;
+                    curr_value = Multi_Turns;
                     break;
                 case 9:
-                    curr_value = count_tor;
+                    curr_value = multi_debug;
                     break;
                 case 10:
-                    curr_value = MOTOR_TORQUE_CONSTANT;
+                    curr_value = init_multi_turn;
                     break;
                 case 11:
                     curr_value =  encoder_position_to_rad(Encoder.shadow_count);
                     break;
                 case 12:
-                    curr_value = encoder_speed_to_rad_per_sec(Encoder.vel);
+                    curr_value =   Encoder.shadow_count;
                     break;
                 default:
                     break;
@@ -834,6 +989,7 @@ void MC_low_priority_task(void)
         }
     }
 }
+
 
 
 static inline void motor_mit_control(void)
@@ -867,7 +1023,7 @@ void MC_high_priority_task(void)
     if(!MotorControl.is_bootup){
         return;
     }
-
+ out_rad = update_joint_angle(Encoder.raw, 12.0f);
     static uint8_t tick = 0;
     if(++tick >= 10){
         tick = 0;
@@ -901,6 +1057,36 @@ void MC_high_priority_task(void)
     
     // 2KHz
     if(tick == 0){
+			
+				EX_ENCODER_VALUE = ENCODER_EX_read();
+//				if(1){
+////					uint16_t Mech_Angle_Err = 15747;
+////					uint16_t Mech_Angle_Side_Err = 16074;
+//					uint16_t Mech_Angle_Err = 0;
+//					uint16_t Mech_Angle_Side_Err = 0;
+//					uint16_t ex_encder = EX_ENCODER_VALUE;
+//					Mech_Differ = 65535 - (((Encoder.raw << 2) - (Mech_Angle_Err << 2)) -  ((ex_encder << 2) - (Mech_Angle_Side_Err << 2)));
+//					if((uint16_t)((Encoder.raw << 2) - (Mech_Angle_Err << 2)) >= 65235){
+//						Mech_Differ -= 300;
+//					}
+//					if((uint16_t)((Encoder.raw << 2) - (Mech_Angle_Err << 2)) <= 300){
+//						Mech_Differ += 300;
+//					}					
+//					    static bool init_multi = true;
+
+//					if(init_multi){
+//						Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+//						 Encoder.shadow_count += Multi_Turns*ENCODER_RESOLUTION;
+//						Encoder.shadow_count -= Mech_Angle_Err;
+//					}
+//					multi_debug = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+////					Multi_Turns = Multi_Turns % 12;
+
+//					init_multi = false;
+//				}
+//				encoder_raw = Encoder.shadow_count;
+//				encoder_one = Encoder.raw;
+//				encoder_two = EX_ENCODER_VALUE;
 				motor_mit_control();
 
         servo_loop();

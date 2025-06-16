@@ -134,7 +134,10 @@ void COM_CAN_loop(void)
         }
     }
 }
+extern float encoder_raw;
+extern float encoder_one;
 
+extern float encoder_two;
 static inline void send_to_host_or_enqueue(CanFrame *tx_frame)
 {
     if(SOC_can_transmit(tx_frame)){
@@ -228,15 +231,23 @@ static void parse_frame(CanFrame *frame)
 
             // tx msg
             frame->id = MSG_ID_TPDO_5 + mNodeID;
-            frame->dlc = 9;
+            frame->dlc = 16;
 				
 //            *(float*)&frame->data[0] = MotorControl.position_cmd;
 //            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
 //						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
 //				
+						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
+						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
+
             *(float*)&frame->data[0] = MotorControl.raw_pos;
             *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE*12.0;
+						*(float*)&frame->data[8] = ACTUAL_TORQUE * GEAR_RATIO; 
+            *(int16_t*)&frame->data[12] = Motor_Temp;
+            *(int16_t*)&frame->data[14] = Drive_Temp;
+//						*(float*)&frame->data[0] = encoder_raw;
+//            *(float*)&frame->data[4] = encoder_one;
+//						*(float*)&frame->data[8] = encoder_two;
             send_to_host_or_enqueue(frame);
             break;
         case MSG_ID_DFU:

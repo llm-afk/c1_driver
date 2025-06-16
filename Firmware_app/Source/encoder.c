@@ -447,15 +447,129 @@ int32_t ENCODER_read(void)
     
     return (sample_data >> 2);
 }
+extern int16_t Multi_Turns;
+extern float out_rad;
+extern uint16_t Mech_Differ;
 
+
+#define ENCODER_RESOLUTION 16384        // 2^14 = 16384
+#define HALF_RESOLUTION    (ENCODER_RESOLUTION / 2)
+#define TWO_PI             6.2831852f
+
+typedef struct {
+    int initialized;
+    uint16_t init_position_raw;   // 上电时第一编码器的原始 tick 值
+    uint16_t last_position_raw;   // 上一次读取的编码器 tick
+    int32_t accum_ticks;          // 从 last_position_raw 开始累计的 tick 差值
+    float gear_ratio;             // 减速比
+    float init_angle_rad;         // 上电时的“电机侧总角度”，含圈数（rad）
+} AbsEncoderState;
+
+// 初始化：传入第一编码器读数、减速比、圈数
+void abs_encoder_init(AbsEncoderState* enc, uint16_t raw_val, float gear_ratio, int init_round) {
+    enc->initialized = 1;
+    enc->init_position_raw = raw_val;
+    enc->last_position_raw = raw_val;
+    enc->accum_ticks = 0;
+    enc->gear_ratio = (gear_ratio > 0.0f) ? gear_ratio : 1.0f;
+
+    float raw_angle_rad = (float)(raw_val) * TWO_PI / ENCODER_RESOLUTION;
+    enc->init_angle_rad = ((float)init_round) * TWO_PI + raw_angle_rad;
+}
+
+// 更新：每次传入当前第一编码器的值
+void abs_encoder_update(AbsEncoderState* enc, uint16_t raw_val) {
+    if (!enc->initialized) {
+        abs_encoder_init(enc, raw_val, 1.0f, 0); // 默认参数
+        return;
+    }
+
+    int32_t delta = (int32_t)raw_val - (int32_t)enc->last_position_raw;
+
+    // 编码器跨零处理
+    if (delta > HALF_RESOLUTION)
+        delta -= ENCODER_RESOLUTION;
+    else if (delta < -HALF_RESOLUTION)
+        delta += ENCODER_RESOLUTION;
+
+    enc->accum_ticks += delta;
+    enc->last_position_raw = raw_val;
+}
+
+// 获取当前“关节侧”角度（单位：rad）
+float abs_encoder_get_final_angle_rad(const AbsEncoderState* enc) {
+    float delta_rad = (float)(enc->accum_ticks) * TWO_PI / ENCODER_RESOLUTION;
+    return (enc->init_angle_rad + delta_rad) / enc->gear_ratio;
+}
+
+// 获取当前“关节侧”圈数（单位：turn）
+float abs_encoder_get_final_angle_turn(const AbsEncoderState* enc) {
+    return abs_encoder_get_final_angle_rad(enc) / TWO_PI;
+}
+uint16_t init_raw = 0;
+float abs_raw = 0;
+float abs_round = 0;
+uint16_t Mech_Angle_Old = 0;
+int16_t init_multi_turn = 0;
+uint16_t init_ex_encoder = 0;
+extern int16_t multi_debug;
 void ENCODER_loop(void)
-{
+{ 
+		static bool init_encoder = true;
+		static AbsEncoderState encoder;
     Encoder.raw = ENCODER_read();
+
     if (Encoder.Config.encoder_reverse) {
         Encoder.raw = ENCODER_CPR - 1 - Encoder.raw;
     }
-    
-    /* Linearization */
+		
+			uint16_t Mech_Angle = Encoder.raw ;
+			uint16_t Mech_Angle_Side = ENCODER_EX_read() ;
+
+			uint16_t Mech_Angle_Err = 4460;
+			uint16_t Mech_Angle_Side_Err = 8576;
+			uint16_t ex_encder = EX_ENCODER_VALUE;
+		
+			static bool init_multi = true;
+
+			if(init_multi){
+				uint16_t Mech_Differ = 65535 - (((Encoder.raw << 2) - (Mech_Angle_Err << 2)) -  ((ex_encder << 2) - (Mech_Angle_Side_Err << 2)));
+				if((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2)) >= 63535)
+					Mech_Differ -= 500;
+				else if((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2)) <= 2000)
+					Mech_Differ += 500;
+				Multi_Turns = (Mech_Differ <= 32767) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+				init_multi_turn = Multi_Turns;
+				init_ex_encoder = Mech_Angle_Side;
+				float Real_Angle = - Multi_Turns * TWO_PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f; //! 这个角度已经是机械角了（磁编的多圈绝对编码还�??要加上offset才行�??
+
+			}
+//			multi_debug = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+//					Multi_Turns = Multi_Turns % 12;
+
+			init_multi = false;
+		
+		if(init_encoder){
+//			Encoder.shadow_count = Encoder.raw;
+			init_raw = Encoder.raw;
+			abs_encoder_init(&encoder, init_raw, 12.0f, Multi_Turns);  // 假设开机时读取的是100
+
+			init_encoder = false;
+		}
+		uint16_t Mech_Differ = 		65535 - (((Encoder.raw << 2) - (Mech_Angle_Err << 2)) -  ((ex_encder << 2) - (Mech_Angle_Side_Err << 2)));
+		if((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2)) >= 65235)
+			Mech_Differ -= 300;
+		else if((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2)) <= 300)
+			Mech_Differ += 300;
+		multi_debug = (Mech_Differ <= 32767) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+		if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
+		if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
+		Mech_Angle_Old = Mech_Angle;
+		float Real_Angle = ((float)((int)Multi_Turns) * TWO_PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/12.0f; // Real Angle in rad.
+   
+
+
+		/* Linearization */
     int n     = ENCODER_BITS - CALIB_LUT_BITS;
     int off_1 = Encoder.Config.encoder_offset_lut[(Encoder.raw)>>n];                              // lookup table lower entry
     int off_2 = Encoder.Config.encoder_offset_lut[((Encoder.raw>>n)+1)%ENCODER_OFFSET_LUT_NUM];   // lookup table higher entry
@@ -531,4 +645,9 @@ void ENCODER_loop(void)
     Encoder.phase = Encoder.pll_pos * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
     Encoder.vel = Encoder.pll_vel;
     Encoder.phase_vel = Encoder.vel * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
+//abs_encoder_update(&encoder, Encoder.raw);
+//    abs_encoder_init(&encoder, init_raw);  // 假设开机时读取的是100
+		abs_raw = abs_encoder_get_final_angle_rad(&encoder);
+				abs_raw = Real_Angle;
+//		abs_round = abs_encoder_get_total_turns(&encoder);
 }
