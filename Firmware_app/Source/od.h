@@ -85,7 +85,8 @@ typedef struct {
     float    profile_torque_slope;        // [Nm/s]    [FLOAT]  (0~100)
     
     float    home_offset;
-    
+		uint16_t in_encoder_offset;
+		uint16_t ex_encoder_offset;
     uint16_t firmware_version;
     uint8_t  restore_default;
     uint8_t  plot_ctrl;

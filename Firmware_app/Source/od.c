@@ -72,8 +72,8 @@ static const OD_entry_t ODList[] = {
     {0x2069, &ODObjs.following_error_time,      2, ATTR_ROM | ATTR_RW, NULL},
     {0x206A, &ODObjs.brake_ctrl,                1, ATTR_ROM | ATTR_RW, NULL},
     
-    {0x2070, &ODObjs.velocity_ctrl_gain,        2, ATTR_ROM | ATTR_RW, MC_ctrl_param_update},
-    {0x2071, &ODObjs.position_ctrl_gain,        2, ATTR_ROM | ATTR_RW, MC_ctrl_param_update},
+    {0x2070, &ODObjs.in_encoder_offset,        2, ATTR_ROM | ATTR_RW, MC_ctrl_param_update},
+    {0x2071, &ODObjs.ex_encoder_offset,        2, ATTR_ROM | ATTR_RW, MC_ctrl_param_update},
     
     {0x2080, &ODObjs.profile_velocity,          4, ATTR_ROM | ATTR_RW, MC_profile_update},
     {0x2081, &ODObjs.profile_acceleration,      4, ATTR_ROM | ATTR_RW, MC_profile_update},
@@ -81,7 +81,8 @@ static const OD_entry_t ODList[] = {
     {0x2083, &ODObjs.profile_torque_slope,      4, ATTR_ROM | ATTR_RW, MC_profile_update},
     
     {0x2090, &ODObjs.home_offset,               4, ATTR_ROM | ATTR_RW, NULL},
-    
+//		{0x2091, &ODObjs.in_encoder_offset,          2, ATTR_ROM | ATTR_RW, NULL},
+//		{0x2092, &ODObjs.ex_encoder_offset,          2, ATTR_ROM | ATTR_RW, NULL},
     {0x2100, &ODObjs.firmware_version,          2, ATTR_RAM | ATTR_R,  NULL},
     {0x2101, &ODObjs.restore_default,           1, ATTR_RAM | ATTR_W,  OD_restore_defalt},
     {0x2102, &ODObjs.plot_ctrl,                 1, ATTR_RAM | ATTR_W,  NULL},
@@ -328,7 +329,12 @@ uint8_t OD_write_2(uint16_t idx, uint8_t *data)
     
     // get entry
     OD_entry_t *entry = find_entry(idx);
-    
+		if(idx == 0x2070){
+			*(uint16_t*)data = Encoder.raw;
+		}
+		if(idx == 0x2071){
+			*(uint16_t*)data = EX_ENCODER_VALUE;
+		}		
     if(entry != NULL && entry->attribute & ATTR_W && entry->datasize == 2){
         if(*(uint16_t*)entry->obj != *(uint16_t*)data){
             *(uint16_t*)entry->obj = *(uint16_t*)data;

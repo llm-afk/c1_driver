@@ -142,6 +142,10 @@ static inline void send_to_host_or_enqueue(CanFrame *tx_frame)
     }
 }
 float recv_tor = 0.0f;
+extern float encoder_raw;
+extern float encoder_one;
+
+extern float encoder_two;
 static void parse_frame(CanFrame *frame)
 {
     switch(GET_MSG_ID(frame->id)){
@@ -196,7 +200,9 @@ static void parse_frame(CanFrame *frame)
 
         case MSG_ID_RPDO_3:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
-            MC_pdo_profile_torque(*(float*)&frame->data[0], *(float*)&frame->data[4]);
+//            MC_pdo_profile_torque(*(float*)&frame->data[0], *(float*)&frame->data[4]);
+//							MotorControl.current_mit = *(float*)&frame->data[0];
+							recv_tor = *(float*)&frame->data[0];
             break;
 
         case MSG_ID_RPDO_4:
@@ -213,7 +219,15 @@ static void parse_frame(CanFrame *frame)
             break;
         case MSG_ID_RPDO_5:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
-
+							
+//							if(ERROR_CODE){
+//								frame->id = MSG_ID_EMERGENCY + mNodeID;
+//								frame->id = 8;
+//								for(int i=0; i<8; i++){
+//									frame->data[i] = 0;
+//								}
+//								*(uint16_t*)&frame->data[0] = ERROR_CODE;
+//							}
 //            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
 //            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
 //            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
@@ -228,15 +242,23 @@ static void parse_frame(CanFrame *frame)
 
             // tx msg
             frame->id = MSG_ID_TPDO_5 + mNodeID;
-            frame->dlc = 9;
+						frame->dlc = 16;
 				
 //            *(float*)&frame->data[0] = MotorControl.position_cmd;
 //            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
 //						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
 //				
+						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
+						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
+
             *(float*)&frame->data[0] = MotorControl.raw_pos;
             *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE*12.0;
+						*(float*)&frame->data[8] = ACTUAL_TORQUE * GEAR_RATIO; 
+            *(int16_t*)&frame->data[12] = Motor_Temp;
+            *(int16_t*)&frame->data[14] = Drive_Temp;
+//						*(float*)&frame->data[0] = encoder_raw;
+//            *(float*)&frame->data[4] = encoder_one;
+//						*(float*)&frame->data[8] = encoder_two;
             send_to_host_or_enqueue(frame);
             break;
         case MSG_ID_DFU:

@@ -30,6 +30,8 @@
 #define MOTOR_TEMPERATURE                   ODObjs.motor_temperature
 #define IN_ENCODER_VALUE                    ODObjs.in_encoder_value
 #define EX_ENCODER_VALUE                    ODObjs.ex_encoder_value
+#define IN_ENCODER_OFFSET                   ODObjs.in_encoder_offset
+#define EX_ENCODER_OFFSET                   ODObjs.ex_encoder_offset
 
 #define MOTOR_POLE_PAIRS                    ODObjs.motor_pp
 #define MOTOR_PHASE_R                       ODObjs.motor_r
@@ -143,6 +145,7 @@ typedef enum {
 #define POSITION_CTRL_PERIOD        (1.0f / POSITION_CTRL_FREQUENCY)
 #define SERVO_CTRL_FREQUENCY        (CURRENT_MEASURE_HZ / 10)
 #define SERVO_CTRL_PERIOD           (1.0f / SERVO_CTRL_FREQUENCY)
+#define GEAR_RATIO         18.36f
 
 // Control loop define
 #define ENABLED_LOOP_NONE	        0

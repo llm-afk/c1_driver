@@ -566,7 +566,7 @@ count_tor++;
         float torque;
 				
         MP_trapezoid_torque_execute(&torque);
-count_tor++;
+				count_tor++;
         MotorControl.current_set = torque / MOTOR_TORQUE_CONSTANT;
     }else{
         SW_TARGET_REACHED_SET();
@@ -697,7 +697,6 @@ static void servo_loop(void)
 }
 
 #define ENCODER_RESOLUTION 16384     // 2^14
-#define GEAR_RATIO         12.0f
 #define TWO_PI             6.28318530718f
 
 // 每个编码器计数对应负载端弧度
@@ -712,10 +711,253 @@ float encoder_position_to_rad(int32_t pos_count) {
 float encoder_speed_to_rad_per_sec(int32_t speed_count) {
     return speed_count * RAD_PER_COUNT;
 }
+
+#define VCC         3.3f           // 分压上拉电压
+#define ADC_MAX     4095.0f        // 12-bit ADC
+#define R_FIXED     10000.0f       // R60 = 10kΩ
+#define R_25        10000.0f      // NTC阻值@25℃
+#define B_VALUE     3950.0f        // B25/50 值
+typedef struct {
+    float temperature;
+    float resistance;
+} ntc_lookup_t;
+
+static const ntc_lookup_t ntc_table[] = {
+    {  -40,  401859.72 },
+    {  -39,  373810.23 },
+    {  -38,  347932.61 },
+    {  -37,  324043.24 },
+    {  -36,  301975.23 },
+    {  -35,  281576.83 },
+    {  -34,  262709.96 },
+    {  -33,  245248.87 },
+    {  -32,  229078.96 },
+    {  -31,  214095.75 },
+    {  -30,  200203.90 },
+    {  -29,  187316.35 },
+    {  -28,  175353.57 },
+    {  -27,  164242.82 },
+    {  -26,  153917.57 },
+    {  -25,  144316.94 },
+    {  -24,  135385.12 },
+    {  -23,  127070.98 },
+    {  -22,  119327.64 },
+    {  -21,  112112.05 },
+    {  -20,  105384.69 },
+    {  -19,   99109.27 },
+    {  -18,   93252.39 },
+    {  -17,   87783.38 },
+    {  -16,   82673.95 },
+    {  -15,   77898.11 },
+    {  -14,   73431.86 },
+    {  -13,   69253.12 },
+    {  -12,   65341.48 },
+    {  -11,   61678.14 },
+    {  -10,   58245.71 },
+    {   -9,   55028.16 },
+    {   -8,   52010.63 },
+    {   -7,   49179.41 },
+    {   -6,   46521.80 },
+    {   -5,   44026.05 },
+    {   -4,   41681.25 },
+    {   -3,   39477.34 },
+    {   -2,   37404.94 },
+    {   -1,   35455.38 },
+    {    0,   33620.60 },
+    {    1,   31893.14 },
+    {    2,   30266.03 },
+    {    3,   28732.84 },
+    {    4,   27287.54 },
+    {    5,   25924.56 },
+    {    6,   24638.71 },
+    {    7,   23425.14 },
+    {    8,   22279.34 },
+    {    9,   21197.13 },
+    {   10,   20174.58 },
+    {   11,   19208.04 },
+    {   12,   18294.10 },
+    {   13,   17429.59 },
+    {   14,   16611.53 },
+    {   15,   15837.15 },
+    {   16,   15103.85 },
+    {   17,   14409.22 },
+    {   18,   13750.98 },
+    {   19,   13127.01 },
+    {   20,   12535.33 },
+    {   21,   11974.06 },
+    {   22,   11441.48 },
+    {   23,   10935.95 },
+    {   24,   10455.94 },
+    {   25,   10000.00 },
+    {   26,    9566.80 },
+    {   27,    9155.06 },
+    {   28,    8763.61 },
+    {   29,    8391.31 },
+    {   30,    8037.14 },
+    {   31,    7700.10 },
+    {   32,    7379.26 },
+    {   33,    7073.76 },
+    {   34,    6782.77 },
+    {   35,    6505.53 },
+    {   36,    6241.30 },
+    {   37,    5989.41 },
+    {   38,    5749.21 },
+    {   39,    5520.08 },
+    {   40,    5301.47 },
+    {   41,    5092.82 },
+    {   42,    4893.63 },
+    {   43,    4703.42 },
+    {   44,    4521.73 },
+    {   45,    4348.14 },
+    {   46,    4182.23 },
+    {   47,    4023.64 },
+    {   48,    3871.99 },
+    {   49,    3726.95 },
+    {   50,    3588.18 },
+    {   51,    3455.39 },
+    {   52,    3328.29 },
+    {   53,    3206.60 },
+    {   54,    3090.07 },
+    {   55,    2978.44 },
+    {   56,    2871.48 },
+    {   57,    2768.98 },
+    {   58,    2670.72 },
+    {   59,    2576.51 },
+    {   60,    2486.16 },
+    {   61,    2399.50 },
+    {   62,    2316.34 },
+    {   63,    2236.53 },
+    {   64,    2159.93 },
+    {   65,    2086.37 },
+    {   66,    2015.74 },
+    {   67,    1947.88 },
+    {   68,    1882.70 },
+    {   69,    1820.05 },
+    {   70,    1759.84 },
+    {   71,    1701.95 },
+    {   72,    1646.28 },
+    {   73,    1592.74 },
+    {   74,    1541.24 },
+    {   75,    1491.68 },
+    {   76,    1443.99 },
+    {   77,    1398.08 },
+    {   78,    1353.88 },
+    {   79,    1311.32 },
+    {   80,    1270.32 },
+    {   81,    1230.83 },
+    {   82,    1192.77 },
+    {   83,    1156.10 },
+    {   84,    1120.75 },
+    {   85,    1086.67 },
+    {   86,    1053.81 },
+    {   87,    1022.11 },
+    {   88,     991.54 },
+    {   89,     962.04 },
+    {   90,     933.58 },
+    {   91,     906.10 },
+    {   92,     879.58 },
+    {   93,     853.98 },
+    {   94,     829.25 },
+    {   95,     805.37 },
+    {   96,     782.30 },
+    {   97,     760.00 },
+    {   98,     738.46 },
+    {   99,     717.65 },
+    {  100,     697.52 },
+    {  101,     678.06 },
+    {  102,     659.25 },
+    {  103,     641.05 },
+    {  104,     623.45 },
+    {  105,     606.42 },
+    {  106,     589.94 },
+    {  107,     573.99 },
+    {  108,     558.55 },
+    {  109,     543.61 },
+    {  110,     529.14 },
+    {  111,     515.13 },
+    {  112,     501.56 },
+    {  113,     488.41 },
+    {  114,     475.68 },
+    {  115,     463.34 },
+    {  116,     451.38 },
+    {  117,     439.79 },
+    {  118,     428.55 },
+    {  119,     417.65 },
+    {  120,     407.09 },
+    {  121,     396.84 },
+    {  122,     386.91 },
+    {  123,     377.26 },
+    {  124,     367.91 },
+    {  125,     358.83 },
+};
+
+#define ntc_table_len (sizeof(ntc_table)/sizeof(ntc_table[0]))
+
+
+// ⚙️ 由ADC值计算NTC电阻
+static inline float calc_ntc_resistance(uint16_t adc_value) {
+    float v_out = (float)adc_value / ADC_MAX * VCC;
+    return (v_out * R_FIXED) / (VCC - v_out);
+}
+
+// ⚙️ 由NTC电阻计算温度（单位：摄氏度）
+static inline float calc_temperature_celsius(float r_ntc) {
+    float temp_k = 1.0f / (1.0f / (25.0f + 273.15f) + logf(r_ntc / R_25) / B_VALUE);
+    return temp_k - 273.15f;
+}
+
+static inline float lookup_ntc_temperature(float r_ntc) {
+    for (int i = 0; i < ntc_table_len - 1; i++) {
+        float r1 = ntc_table[i].resistance;
+        float r2 = ntc_table[i + 1].resistance;
+
+        if (r_ntc <= r1 && r_ntc >= r2) {
+            float t1 = ntc_table[i].temperature;
+            float t2 = ntc_table[i + 1].temperature;
+            return t1 + (r_ntc - r1) / (r2 - r1) * (t2 - t1);
+        }
+    }
+
+    // 越界情况
+    if (r_ntc > ntc_table[0].resistance)
+        return ntc_table[0].temperature;
+    else
+        return ntc_table[ntc_table_len - 1].temperature;
+}
+
+static inline float get_ntc_temperature(void) {
+    uint16_t adc = adc_buff[1];
+    float r_ntc = calc_ntc_resistance(adc);
+    return lookup_ntc_temperature(r_ntc);  // ← 查表插值计算
+}
+// ✅ 主函数调用：获取温度值
+//static inline float get_ntc_temperature(void) {
+//    uint16_t adc = adc_buff[1];
+//    float r_ntc = calc_ntc_resistance(adc);
+//    return calc_temperature_celsius(r_ntc);
+//}
 float tau_l;
 float pos_err;
 float vel_err;
 float head_tor;
+extern float raw_rad_data;
+extern int16_t Multi_Turns;
+extern	int init_in;
+extern	uint16_t init_ex;
+extern	uint16_t init_in_offset;
+extern	uint16_t init_ex_offset;
+extern int raw_encoder;
+extern float Real_Velocity;
+extern float Velocity_Filtered;
+extern float recv_tor ;
+
+  float a = 3.14;
+  float f = 0.2;
+  float c = 0.0;
+  float kp = 100;
+  float kd = 1;
+  double       t_diff = 0.0;
+
 // Free loop
 void MC_low_priority_task(void)
 {
@@ -748,13 +990,13 @@ void MC_low_priority_task(void)
 
         // drv over temperature check
         DRV_TEMPERATURE = SOC_read_drv_temp();
-        if(DRV_TEMPERATURE > OVER_TEMP_DRV_LEVEL){
+        if(DRV_TEMPERATURE > 80){
             COM_CAN_report_err(ERR_OVER_TEMP_DRV);
         }
         
         // motor over temperature check
-        MOTOR_TEMPERATURE = SOC_read_motor_temp();
-        if(MOTOR_TEMPERATURE > OVER_TEMP_MOTOR_LEVEL){
+        MOTOR_TEMPERATURE = get_ntc_temperature();
+        if(MOTOR_TEMPERATURE > 10){
             COM_CAN_report_err(ERR_OVER_TEMP_MOTOR);
         }
         
@@ -785,40 +1027,40 @@ void MC_low_priority_task(void)
             
             switch(PLOT_CTRL){
                 case 1:
-                    curr_value = ACTUAL_TORQUE;
-                    break;
-                case 2:
-                    curr_value = MotorControl.velocity_set;
-                    break;
-                case 3:
                     curr_value = MotorControl.pos_set;
                     break;
+                case 2:
+                    curr_value = MotorControl.current_set;
+                    break;
+                case 3:
+                    curr_value = tau_l;
+                    break;
                 case 4:
-                    curr_value =  pos_err;
+                    curr_value =  init_ex_offset;
                     break;
                 case 5:
-                    curr_value = vel_err;
+                    curr_value = raw_encoder;
                     break;
                 case 6:
-                    curr_value = DC_LINK_CURRENT;
+                    curr_value = Encoder.pll_ki;
                     break;
                 case 7:
-                    curr_value = ELECTRICAL_POWER;
+                    curr_value = Real_Velocity;
                     break;
                 case 8:
-                    curr_value = MECHANICAL_POWER;
+                    curr_value = adc_buff[1];
                     break;
                 case 9:
-                    curr_value = count_tor;
+                    curr_value = DRV_TEMPERATURE;
                     break;
                 case 10:
-                    curr_value = MOTOR_TORQUE_CONSTANT;
+                    curr_value = MOTOR_TEMPERATURE;
                     break;
                 case 11:
-                    curr_value =  encoder_position_to_rad(Encoder.shadow_count);
+                    curr_value = MotorControl.pos_set;
                     break;
                 case 12:
-                    curr_value = encoder_speed_to_rad_per_sec(Encoder.vel);
+                    curr_value = MotorControl.velocity_set;
                     break;
                 default:
                     break;
@@ -835,19 +1077,29 @@ void MC_low_priority_task(void)
     }
 }
 
-
 static inline void motor_mit_control(void)
 {
-//    float pos_err = MotorControl.position_set - ACTUAL_POSITION;
-//    float vel_err = MotorControl.velocity_set - ACTUAL_VELOCITY;
-//	  const float pos_err = (float)(MotorControl.position_set - Encoder.shadow_count) * M_2PI / ENCODER_CPR_F;
-	MotorControl.raw_pos = encoder_position_to_rad(Encoder.shadow_count);
-		MotorControl.raw_vel = encoder_speed_to_rad_per_sec(Encoder.vel);
+
+//	MotorControl.raw_pos = encoder_position_to_rad(Encoder.shadow_count);
+//		MotorControl.raw_vel = encoder_speed_to_rad_per_sec(Encoder.vel);
+////	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
+
+//		pos_err = (MotorControl.pos_set - encoder_position_to_rad(Encoder.shadow_count))/1.0;
+//		vel_err = (MotorControl.velocity_set - encoder_speed_to_rad_per_sec(Encoder.vel))/1.0;
+//	
+	MotorControl.raw_pos = raw_rad_data;
+		MotorControl.raw_vel = Velocity_Filtered;
 //	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
-
-		pos_err = (MotorControl.pos_set - encoder_position_to_rad(Encoder.shadow_count))/1.0;
-		vel_err = (MotorControl.velocity_set - encoder_speed_to_rad_per_sec(Encoder.vel))/1.0;
-
+	t_diff+= 0.001;
+// MotorControl.pos_set = (a * sin(2 * 3.14 * f * t_diff) + c);
+// MotorControl.velocity_set = (2 * 3.14 * f * a * cos(2 * 3.14 * f * t_diff));
+		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
+		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0;
+	
+//		  tau_l =
+//      kp * pos_err +
+//        kd * vel_err + MotorControl.current_mit;  // �?前馈力矩
+//		
 	  tau_l =
       MotorControl.Kp * pos_err +
         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
@@ -860,7 +1112,11 @@ static inline void motor_mit_control(void)
 
 
 }
+float encoder_raw;
+float encoder_one;
 
+float encoder_two;
+uint32_t count_tor_test = 0;
 // 20KHz
 void MC_high_priority_task(void)
 {
@@ -898,21 +1154,28 @@ void MC_high_priority_task(void)
     // Lowpass filter FC=800, rc = 1/(2*pi*FC), alpha = dt / (dt + rc)
     MotorControl.id_filtered = 0.2f * MotorControl.Id + 0.8f * MotorControl.id_filtered;
     MotorControl.iq_filtered = 0.2f * MotorControl.Iq + 0.8f * MotorControl.iq_filtered;
-    
+
     // 2KHz
     if(tick == 0){
+				EX_ENCODER_VALUE = ENCODER_EX_read();
+//count_tor_test ++;
+//				encoder_raw = Encoder.shadow_count;
+//				encoder_one = Encoder.raw;
+//				encoder_two = EX_ENCODER_VALUE;
+//			if(count_tor_test %2 == 0){
 				motor_mit_control();
 
         servo_loop();
+//			}
 
 
     }
 
     // 2KHz
     if(tick == 1){
-        if(MotorControl.enabled_loop & ENABLED_LOOP_POSITION){
-            position_ctrl_loop();
-        }
+//        if(MotorControl.enabled_loop & ENABLED_LOOP_POSITION){
+//            position_ctrl_loop();
+//        }
     }
 
     // 4KHz
