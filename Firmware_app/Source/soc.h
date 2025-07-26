@@ -54,7 +54,7 @@ static inline float SOC_read_drv_temp(void)
 {
     float v = 3.3f * adc_buff[2] / 4095.0f;
     float r = v * 10000 / (3.3f - v);
-    return calculate_temperature(r, 10000, 3950, 298.15);
+    return calculate_temperature(r, 100000, 3950, 298.15);
 }
 
 static inline float SOC_read_motor_temp(void)

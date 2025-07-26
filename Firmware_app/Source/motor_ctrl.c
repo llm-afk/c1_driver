@@ -86,7 +86,8 @@ int MC_ctrl_param_update(void)
     
     return 0;
 }
-
+extern  uint16_t mHeartBeatConsumerTime;
+extern  uint32_t mHeartbeatConsumerTick ;
 int MC_controlword_update(void)
 {
     // CMD
@@ -280,6 +281,7 @@ int MC_set_state(tMCState state)
             break;
         
         case MCS_OPERATION:
+					ERROR_CODE = 0;
             if(ERROR_CODE){
                 return -1;
             }
@@ -973,7 +975,9 @@ void MC_low_priority_task(void)
     // 100Hz
     if(get_ms_since(tick_100) >= 10){
         tick_100 = get_tick();
-
+				if(ERROR_CODE && !(ERROR_CODE & ERR_HEARTBEAT_TIMEOUT)){
+					MC_error_reset();
+				}
         // Zero speed check
         if(ABS(INTER_TO_USR(Encoder.vel)) < VELOCITY_THRESHOLD_WINDOW){
             if(zero_speed_tick == 0){
@@ -996,7 +1000,7 @@ void MC_low_priority_task(void)
         
         // motor over temperature check
         MOTOR_TEMPERATURE = get_ntc_temperature();
-        if(MOTOR_TEMPERATURE > 10){
+        if(MOTOR_TEMPERATURE > 120){
             COM_CAN_report_err(ERR_OVER_TEMP_MOTOR);
         }
         
@@ -1016,6 +1020,7 @@ void MC_low_priority_task(void)
         
         // ex encoder value update
         EX_ENCODER_VALUE = ENCODER_EX_read();
+			
     }
     
     // 2000Hz for plot
@@ -1027,7 +1032,7 @@ void MC_low_priority_task(void)
             
             switch(PLOT_CTRL){
                 case 1:
-                    curr_value = MotorControl.pos_set;
+                    curr_value =ACTUAL_TORQUE * GEAR_RATIO;
                     break;
                 case 2:
                     curr_value = MotorControl.current_set;
@@ -1045,10 +1050,10 @@ void MC_low_priority_task(void)
                     curr_value = Encoder.pll_ki;
                     break;
                 case 7:
-                    curr_value = Real_Velocity;
+                    curr_value = mHeartbeatConsumerTick;
                     break;
                 case 8:
-                    curr_value = adc_buff[1];
+                    curr_value = mHeartBeatConsumerTime;
                     break;
                 case 9:
                     curr_value = DRV_TEMPERATURE;
@@ -1163,7 +1168,7 @@ void MC_high_priority_task(void)
 //				encoder_one = Encoder.raw;
 //				encoder_two = EX_ENCODER_VALUE;
 //			if(count_tor_test %2 == 0){
-				motor_mit_control();
+//				motor_mit_control();
 
         servo_loop();
 //			}

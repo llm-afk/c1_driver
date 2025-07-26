@@ -7,7 +7,7 @@
 
 static uint8_t mNodeID;
 static uint16_t mHeartBeatProducerTime;
-static uint16_t mHeartBeatConsumerTime;
+ uint16_t mHeartBeatConsumerTime;
 
 static t_fifo_buffer rx_fifo[1];
 static t_fifo_buffer tx_fifo[1];
@@ -17,7 +17,7 @@ static uint8_t tx_buffer[TX_FIFO_BUFFER_SIZE];
 static uint8_t report_buffer[REPORT_FIFO_BUFFER_SIZE];
 
 static uint32_t mHeartbeatProducerTick = 0;
-static uint32_t mHeartbeatConsumerTick = 0;
+ uint32_t mHeartbeatConsumerTick = 0;
 
 static void parse_frame(CanFrame *frame);
 static inline void send_to_host_or_enqueue(CanFrame *tx_frame);
@@ -219,6 +219,8 @@ static void parse_frame(CanFrame *frame)
             break;
         case MSG_ID_RPDO_5:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
+								mHeartbeatConsumerTick = get_tick();
+
 							
 //							if(ERROR_CODE){
 //								frame->id = MSG_ID_EMERGENCY + mNodeID;
@@ -227,6 +229,8 @@ static void parse_frame(CanFrame *frame)
 //									frame->data[i] = 0;
 //								}
 //								*(uint16_t*)&frame->data[0] = ERROR_CODE;
+//								send_to_host_or_enqueue(frame);
+//								break;
 //							}
 //            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
 //            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
@@ -243,7 +247,11 @@ static void parse_frame(CanFrame *frame)
             // tx msg
             frame->id = MSG_ID_TPDO_5 + mNodeID;
 						frame->dlc = 16;
-				
+						if(ERROR_CODE){
+							frame->dlc = 20;
+							*(uint16_t*)&frame->data[16] = ERROR_CODE;
+
+						}
 //            *(float*)&frame->data[0] = MotorControl.position_cmd;
 //            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
 //						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
