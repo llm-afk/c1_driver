@@ -1038,7 +1038,7 @@ void MC_low_priority_task(void)
                     curr_value = MotorControl.current_set;
                     break;
                 case 3:
-                    curr_value = tau_l;
+                    curr_value = raw_rad_data;
                     break;
                 case 4:
                     curr_value =  init_ex_offset;
@@ -1095,7 +1095,7 @@ static inline void motor_mit_control(void)
 	MotorControl.raw_pos = raw_rad_data;
 		MotorControl.raw_vel = Velocity_Filtered;
 //	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
-	t_diff+= 0.001;
+//	t_diff+= 0.001;
 // MotorControl.pos_set = (a * sin(2 * 3.14 * f * t_diff) + c);
 // MotorControl.velocity_set = (2 * 3.14 * f * a * cos(2 * 3.14 * f * t_diff));
 		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
@@ -1168,7 +1168,7 @@ void MC_high_priority_task(void)
 //				encoder_one = Encoder.raw;
 //				encoder_two = EX_ENCODER_VALUE;
 //			if(count_tor_test %2 == 0){
-//				motor_mit_control();
+				motor_mit_control();
 
         servo_loop();
 //			}

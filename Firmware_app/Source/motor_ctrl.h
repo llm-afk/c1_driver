@@ -145,7 +145,7 @@ typedef enum {
 #define POSITION_CTRL_PERIOD        (1.0f / POSITION_CTRL_FREQUENCY)
 #define SERVO_CTRL_FREQUENCY        (CURRENT_MEASURE_HZ / 10)
 #define SERVO_CTRL_PERIOD           (1.0f / SERVO_CTRL_FREQUENCY)
-#define GEAR_RATIO         18.36f
+#define GEAR_RATIO         12.0f
 
 // Control loop define
 #define ENABLED_LOOP_NONE	        0

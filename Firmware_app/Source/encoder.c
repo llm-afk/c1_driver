@@ -468,7 +468,7 @@ void multi_encoder(void){
 	int encoder_one = Encoder.raw;
 	uint16_t Mech_Angle = encoder_one;
 	static bool init_multi = true;
-	uint16_t  Mech_Differ = 65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2)));
+	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
 	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
 		Mech_Differ -= 300;
 	}
@@ -476,13 +476,13 @@ void multi_encoder(void){
 		Mech_Differ += 300;
 	}					
 
-	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
 	if(init_multi){
 		init_in_offset = IN_ENCODER_OFFSET;
 		init_ex_offset = EX_ENCODER_OFFSET;
 		init_in = Encoder.raw;
 		init_ex = encoder_two;
-		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
 		Mech_Angle_Old = encoder_one;
 	}
 	init_multi = false;

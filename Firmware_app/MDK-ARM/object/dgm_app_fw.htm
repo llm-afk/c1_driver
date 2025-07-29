@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\object\dgm_app_fw.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\object\dgm_app_fw.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Fri Jul 25 21:22:07 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Tue Jul 29 12:04:23 2025
 <BR><P>
 <H3>Maximum Stack Usage =        480 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -580,7 +580,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[74]"></a>COM_CAN_loop</STRONG> (Thumb, 1070 bytes, Stack size 168 bytes, com_can.o(i.COM_CAN_loop))
+<P><STRONG><a name="[74]"></a>COM_CAN_loop</STRONG> (Thumb, 1066 bytes, Stack size 168 bytes, com_can.o(i.COM_CAN_loop))
 <BR><BR>[Stack]<UL><LI>Max Depth = 432<LI>Call Chain = COM_CAN_loop &rArr; OD_write_2 &rArr; EE_WriteVariable16bits &rArr; PagesTransfer &rArr; ReadVariable &rArr; FindPage &rArr; SetPageState &rArr; FI_WriteDoubleWord &rArr; fmc_word_program
 </UL>
 <BR>[Calls]<UL><LI><a href="#[7a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fifoBuf_putData
@@ -923,7 +923,7 @@ Global Symbols
 <LI><a href="#[53]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OD_restore_defalt
 </UL>
 
-<P><STRONG><a name="[6e]"></a>MC_high_priority_task</STRONG> (Thumb, 474 bytes, Stack size 32 bytes, motor_ctrl.o(i.MC_high_priority_task))
+<P><STRONG><a name="[6e]"></a>MC_high_priority_task</STRONG> (Thumb, 562 bytes, Stack size 32 bytes, motor_ctrl.o(i.MC_high_priority_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 288<LI>Call Chain = MC_high_priority_task &rArr; servo_loop &rArr; MP_trapezoid_pos_calculate &rArr; __hardfp_sqrtf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[b9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;servo_loop
@@ -946,7 +946,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[bd]"></a>MC_low_priority_task</STRONG> (Thumb, 778 bytes, Stack size 56 bytes, motor_ctrl.o(i.MC_low_priority_task))
+<P><STRONG><a name="[bd]"></a>MC_low_priority_task</STRONG> (Thumb, 780 bytes, Stack size 56 bytes, motor_ctrl.o(i.MC_low_priority_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 184<LI>Call Chain = MC_low_priority_task &rArr; COM_CAN_plot_value &rArr; fifoBuf_putData
 </UL>
 <BR>[Calls]<UL><LI><a href="#[a3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ENCODER_EX_read
@@ -1650,7 +1650,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> entry9a.o(.ARM.Collect$$$$0000000B)
 </UL>
-<P><STRONG><a name="[b1]"></a>multi_encoder</STRONG> (Thumb, 506 bytes, Stack size 48 bytes, encoder.o(i.multi_encoder))
+<P><STRONG><a name="[b1]"></a>multi_encoder</STRONG> (Thumb, 514 bytes, Stack size 48 bytes, encoder.o(i.multi_encoder))
 <BR><BR>[Stack]<UL><LI>Max Depth = 176<LI>Call Chain = multi_encoder &rArr; __hardfp_floor &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
 <BR>[Calls]<UL><LI><a href="#[a5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;spi_i2s_flag_get
