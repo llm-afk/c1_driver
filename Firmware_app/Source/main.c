@@ -376,6 +376,7 @@ static void WATCH_DOG_init(void)
 }
 
 static void LED_act_loop(void);
+static uint8_t mNodeID;
 
 int main(void)
 {
@@ -416,7 +417,8 @@ int main(void)
     fwdgt_enable();
     COM_CAN_report_bootup();
     MotorControl.is_bootup = true;
-    
+    mNodeID = ODObjs.node_id;
+
     static uint32_t tick = 0;
     while(1){
         LED_act_loop();
@@ -471,14 +473,17 @@ static void LED_act_loop(void)
                     tick = 0xFFFF;
                 }
             }else{
-                if(tick == 0){
-                    LED_ACT_SET();
-                }else if(tick == 10){
-                    LED_ACT_RESET();
-                }else if(tick > 100){
+							if(tick / 30 < mNodeID){
+								if(tick % 30 == 0){
+									LED_ACT_SET();
+								}else if(tick % 15 == 0){
+									LED_ACT_RESET();
+								}
+							}
+								if(tick > (30 * mNodeID + 60)){
                     tick = 0xFFFF;
                 }
-            }
+							}
             break;
             
         case MCS_OPERATION:
