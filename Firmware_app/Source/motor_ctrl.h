@@ -132,7 +132,8 @@ typedef enum {
 //#define MOTOR_FLUX_LINKAGE          (ONE_BY_SQRT3 * MOTOR_BACK_EMF_CONSTANT * 60.0f / (1000.0f * MOTOR_POLE_PAIRS * M_2PI))     // [Wb]     ¦Ëpm = (1/¡Ì3)(Ke/(1000P))*(60/2¦Ð)
 //#define MOTOR_TORQUE_CONSTANT       (1.5f * MOTOR_POLE_PAIRS * MOTOR_FLUX_LINKAGE)                                              // [Nm/A]   ¦Ëpm = (2/3)*(Kt/P)
 
-#define CURRENT_CTRL_BW_HZ          800
+//#define CURRENT_CTRL_BW_HZ          800
+#define CURRENT_CTRL_BW_HZ          350
 
 #define POS_INPUT_FILTER_BW         50.0f  // rad/s
 

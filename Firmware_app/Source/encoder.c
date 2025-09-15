@@ -456,7 +456,7 @@ float raw_rad_data = 0.0f;
 int raw_encoder = 0;
 float Real_Velocity;
 static const int32_t vel_average_filter_num = 32;
-float vel_vec[vel_average_filter_num] = {0.0f};\
+float vel_vec[vel_average_filter_num] = {0.0f};
 float Velocity_Filtered;
 void multi_encoder(void){
 	
@@ -496,7 +496,7 @@ void multi_encoder(void){
 	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
 	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
 	Mech_Angle_Old = Mech_Angle;
-	float Real_Angle = ((float)((int)Multi_Turns) * 6.28 + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
+	float Real_Angle = ((float)((int)Multi_Turns) * M_2PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
 	Real_Velocity = (Real_Angle - Real_Angle_Old) / ENCODER_PLL_DT;
 	Real_Angle_Old = Real_Angle;
 	float vel_sum = Real_Velocity;
@@ -511,8 +511,15 @@ void multi_encoder(void){
 Velocity_Filtered = Real_Velocity_Filtered;
 
 }
+
+int encoder_count = 0;
+
 void ENCODER_loop(void)
 {
+	encoder_count ++;
+//	if(encoder_count > 10){
+//		return;
+//	}
 	  static int32_t count_init = 0;
     Encoder.raw = ENCODER_read();
     if (Encoder.Config.encoder_reverse) {

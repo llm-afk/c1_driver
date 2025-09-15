@@ -171,7 +171,9 @@ static void parse_frame(CanFrame *frame)
                 uint8_t *data = &frame->data[4];
                 
                 frame->data[0] = CS_ERR;
-                
+                				 if(idx == 0x2012){
+									MotorControl.current_mit =  *(float*)&frame->data[4];
+								}
                 if(cs == CS_R){
                     frame->data[0] = OD_read(idx, data);
                 }else if(cs == CS_W_1){
@@ -261,8 +263,8 @@ static void parse_frame(CanFrame *frame)
 
             *(float*)&frame->data[0] = MotorControl.raw_pos;
             *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE * GEAR_RATIO; 
-            *(int16_t*)&frame->data[12] = Motor_Temp;
+						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
+							*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
 //						*(float*)&frame->data[0] = encoder_raw;
 //            *(float*)&frame->data[4] = encoder_one;

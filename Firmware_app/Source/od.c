@@ -123,16 +123,16 @@ static void dictionary_init(void)
     ODObjs.motor_l_d = 230e-6f;
     ODObjs.motor_l_q = 260e-6f;
     ODObjs.motor_rated_vel = 30.0f;
-    ODObjs.motor_rated_current = 7.1f;
-    ODObjs.motor_torque_constant = 0.09f;
+    ODObjs.motor_rated_current = 160.0f;
+    ODObjs.motor_torque_constant = 1.00f;
     ODObjs.motor_inertia = 0.000007f;
     
     ODObjs.polarity = 0;
     ODObjs.elec_gear = ENCODER_CPR_F;
     ODObjs.load_inertia = 0.0f;
-    ODObjs.torque_limit = 10.0f;
-    ODObjs.over_current_level = 30.0f;
-    ODObjs.over_load_dpp_level = 100.0f;
+    ODObjs.torque_limit = 30.0f;
+    ODObjs.over_current_level = 160.0f;
+    ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;
     ODObjs.under_voltage_level = 18.0f;
     ODObjs.over_temp_drv_level = 90.0f;
