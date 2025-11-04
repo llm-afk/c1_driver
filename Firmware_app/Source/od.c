@@ -119,9 +119,9 @@ static void dictionary_init(void)
     ODObjs.heartbeat_consumer_time = 0;
     
     ODObjs.motor_pp = 8;
-    ODObjs.motor_r = 0.3f;
-    ODObjs.motor_l_d = 230e-6f;
-    ODObjs.motor_l_q = 260e-6f;
+    ODObjs.motor_r = 0.5629f;
+    ODObjs.motor_l_d = 431e-6f;
+    ODObjs.motor_l_q = 431e-6f;
     ODObjs.motor_rated_vel = 30.0f;
     ODObjs.motor_rated_current = 160.0f;
     ODObjs.motor_torque_constant = 1.00f;
@@ -322,7 +322,7 @@ uint8_t OD_write_1(uint16_t idx, uint8_t *data)
     
     return cs;
 }
-
+uint8_t flag_zero[2] = {0};
 uint8_t OD_write_2(uint16_t idx, uint8_t *data)
 {
     uint8_t cs = CS_ERR;
@@ -331,9 +331,12 @@ uint8_t OD_write_2(uint16_t idx, uint8_t *data)
     OD_entry_t *entry = find_entry(idx);
 		if(idx == 0x2070){
 			*(uint16_t*)data = Encoder.raw;
+			flag_zero[0] = 1;
 		}
 		if(idx == 0x2071){
 			*(uint16_t*)data = EX_ENCODER_VALUE;
+			flag_zero[1] = 1;
+
 		}		
     if(entry != NULL && entry->attribute & ATTR_W && entry->datasize == 2){
         if(*(uint16_t*)entry->obj != *(uint16_t*)data){

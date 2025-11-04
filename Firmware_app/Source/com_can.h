@@ -21,6 +21,8 @@
 #define MSG_ID_RPDO_3       0x400   /**< 0x400, Default RPDO3               (+nodeID) */
 #define MSG_ID_RPDO_4       0x500   /**< 0x500, Default RPDO5               (+nodeID) */
 #define MSG_ID_RPDO_5       0x100   /**< 0x500, Default RPDO5               (+nodeID) */
+//#define MSG_ID_RPDO_6       0x900   /**< 0x500, Default RPDO5               (+nodeID) */
+
 #define MSG_ID_TPDO_5       0x190   /**< 0x180, Default TPDO1               (+nodeID) */
 
 #define MSG_ID_TPDO_1       0x180   /**< 0x180, Default TPDO1               (+nodeID) */

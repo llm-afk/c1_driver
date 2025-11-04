@@ -48,6 +48,68 @@ static inline void velocity_ctrl_loop(void);
 static inline void current_ctrl_loop(void);
 static inline void set_phase_voltage(float Valpha, float Vbeta);
 
+double coef5[] = {1.14787755, -0.0145798348, 0.00117647176, -0.0000548104756, 0.000000739631173};
+int n5 = sizeof(coef5)/sizeof(coef5[0]);
+double dcoef5[5];
+// y = c1*x + c2*x^2 + ... + cn*x^n
+double poly_eval(const double *coef, int n, double x) {
+    double result = 0.0;
+    double xn = x;
+    for (int i = 0; i < n; i++) {
+        result += coef[i] * xn;
+        xn *= x;
+    }
+    return result;
+}
+
+// ========== ?? -> ?? ==========
+// coef: ???????(??->??????)
+// n: ????
+// current: ????
+double current_to_torque(const double *coef, int n, double current) {
+    return poly_eval(coef, n, current);
+}
+
+// ========== ?? -> ?? ==========
+// ????????:?? f(I) = Torque ? I
+// coef: ??->????????
+// dcoef: ???????
+// n: ??
+// torque: ??????
+double torque_to_current(const double *coef, const double *dcoef, int n, double torque) {
+    double x = torque / coef[0];  // ??(????)
+    for (int i = 0; i < 10; i++) {
+        double fx = poly_eval(coef, n, x) - torque;
+        double dfx = poly_eval(dcoef, n - 1, x);
+        if (fabs(dfx) < 1e-10) break; // ???0
+        x -= fx / dfx;
+    }
+    return x;
+}
+
+// ========== ???????? ==========
+void poly_derivative(const double *coef, double *dcoef, int n) {
+    for (int i = 0; i < n - 1; i++) {
+        dcoef[i] = coef[i] * (i + 1);
+    }
+}
+
+double current_to_torque_5(double I) {
+    return 1.14787755 * I
+         - 0.01457983 * I * I
+         + 0.00117647 * I * I * I
+         - 0.0000548105 * I * I * I * I
+         + 0.000000739631 * I * I * I * I * I;
+}
+
+// 力矩 -> 电流 (平均值拟合)
+double torque_to_current_5(double T) {
+    return 0.893926 * T
+         + 0.00578323 * T * T
+         - 0.00113727 * T * T * T
+         + 0.0000785584 * T * T * T * T
+         - 0.00000119598 * T * T * T * T * T;
+}
 void MC_init(void)
 {
     MC_profile_update();
@@ -68,7 +130,7 @@ int MC_ctrl_param_update(void)
     float BW = CURRENT_CTRL_BW_HZ * M_2PI;  // Hz -> Rad/s
     PID_setting(&MotorControl.PID_Id, BW*MOTOR_PHASE_L_D, MOTOR_PHASE_R/MOTOR_PHASE_L_D, 0.0f, CURRENT_CTRL_PERIOD, 0.0f);
     PID_setting(&MotorControl.PID_Iq, BW*MOTOR_PHASE_L_Q, MOTOR_PHASE_R/MOTOR_PHASE_L_Q, 0.0f, CURRENT_CTRL_PERIOD, 0.0f);
-
+    poly_derivative(coef5, dcoef5, n5);
     // Velocity ctrl param
     float J = MOTOR_INERTIA + LOAD_INERTIA;
     float damping_factor = 1.0f + 0.01f * (10000 - VELOCITY_CTRL_GAIN);  // damping_factor(1~101)
@@ -623,14 +685,19 @@ static void servo_loop(void)
 
     // Update od valaue
     DC_LINK_VOLTAGE = MotorControl.BusVoltage;
+		double s = (MotorControl.iq_filtered >= 0.0) ? 1.0 : -1.0;
+
     if(POLARITY){
-        ACTUAL_TORQUE   = - MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
-        ACTUAL_VELOCITY = - INTER_TO_USR(Encoder.vel);
+
+//        ACTUAL_TORQUE   = - s*current_to_torque_5(fabsf(MotorControl.iq_filtered));
+                ACTUAL_TORQUE   = - MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
+				ACTUAL_VELOCITY = - INTER_TO_USR(Encoder.vel);	
         ACTUAL_POSITION = - INTER_TO_USR(Encoder.shadow_count);
     }else{
-        ACTUAL_TORQUE   = + MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
-        ACTUAL_VELOCITY = + INTER_TO_USR(Encoder.vel);
-        ACTUAL_POSITION = + INTER_TO_USR(Encoder.shadow_count);
+//        ACTUAL_TORQUE   = + s*current_to_torque_5(fabsf(MotorControl.iq_filtered));
+				ACTUAL_TORQUE   = + MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
+				ACTUAL_VELOCITY = + INTER_TO_USR(Encoder.vel);
+				ACTUAL_POSITION = + INTER_TO_USR(Encoder.shadow_count);
     }
 
     DC_LINK_CURRENT = MotorControl.i_bus;
@@ -659,7 +726,7 @@ static void servo_loop(void)
 
             MotorControl.i_bus = MotorControl.mod_d * MotorControl.Id + MotorControl.mod_q * MotorControl.iq_filtered;
             MotorControl.electrical_power = MotorControl.BusVoltage * MotorControl.i_bus;
-            MotorControl.mechanical_power = MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT * M_2PI * Encoder.vel / ENCODER_CPR_F;  // P = 2�� * Torque * Vel(r/s)
+            MotorControl.mechanical_power = MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT * M_2PI * Encoder.vel / ENCODER_CPR_F;  // P = 2�� * Torque * Vel(r/s)
 
             // Operation mode switch
             if(MotorControl.op_mode != OPERATION_MODE){
@@ -1093,19 +1160,19 @@ void MC_low_priority_task(void)
                     curr_value = phase_b_adc_offset;
                     break;
                 case 8:
-                    curr_value = phase_c_adc_offset;
+                    curr_value = Multi_Turns;
                     break;
                 case 9:
-                    curr_value = MotorControl.Ia;
+                    curr_value = IN_ENCODER_OFFSET;
                     break;
                 case 10:
-                    curr_value = MotorControl.Ia;
+                    curr_value = EX_ENCODER_OFFSET;
                     break;
                 case 11:
-                    curr_value = MotorControl.Ib;
+                    curr_value = IN_ENCODER_VALUE;
                     break;
                 case 12:
-                    curr_value =  MotorControl.Ic;
+                    curr_value = EX_ENCODER_VALUE;
                     break;
                 default:
                     break;
@@ -1121,6 +1188,20 @@ void MC_low_priority_task(void)
         }
     }
 }
+
+
+double torque_to_current_poly5(double torque) {
+    double T2 = torque * torque;
+    double T3 = T2 * torque;
+    double T4 = T3 * torque;
+    double T5 = T4 * torque;
+    return 0.998154395 * torque
+         - 0.0126781172 * T2
+         + 0.00102301892 * T3
+         - 0.0000476612831 * T4
+         + 0.000000643157541 * T5;
+}
+
 
 static inline void motor_mit_control(void)
 {
@@ -1143,16 +1224,21 @@ static inline void motor_mit_control(void)
 	
 //		  tau_l =
 //      kp * pos_err +
-//        kd * vel_err + MotorControl.current_mit;  // �?前馈力矩
+//        kd * vel_err + MotorControl.current_mit;  // �?前馈力矩
 //		
 	  tau_l =
       MotorControl.Kp * pos_err +
         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
 		tau_l = CLAMP(tau_l, -30, +30);
+		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
+
 //			MotorControl.current_set = tau_l / GEAR_RATIO;  // 如果不考虑效率
 //			head_tor = MotorControl.current_set;
+//		MotorControl.current_set = torque_to_current(coef5, dcoef5, n5, 24.5);
+//		MotorControl.current_set = s*torque_to_current_5( fabsf(tau_l));
 
 		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
+		
 //		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
 
 

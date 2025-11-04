@@ -450,12 +450,12 @@ void delay_ms(const uint16_t ms)
         __NOP();
     }
 }
-
+extern uint8_t flag_zero[2];
 static void LED_act_loop(void)
 {
     static uint16_t tick = 0;
     static uint32_t tick_100Hz = 0;
-    
+    static bool wait_reset = false;
     // 100Hz
     if(get_ms_since(tick_100Hz) < 10){
         return;
@@ -513,6 +513,12 @@ static void LED_act_loop(void)
         default:
             break;
     }
-    
+    if(wait_reset){
+			__set_FAULTMASK(1);							
+			NVIC_SystemReset(); 
+		}
+		if(flag_zero[0] == 1 && flag_zero[1] == 1){
+			wait_reset = true;
+		}
     tick ++;
 }
