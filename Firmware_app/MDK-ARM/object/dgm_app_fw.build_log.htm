@@ -27,6 +27,7 @@ Project File Date:  09/14/2025
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'dgm_app'
+compiling od.c...
 compiling com_can.c...
 ..\Source\com_can.c(157): warning:  #546-D: transfer of control bypasses initialization of:
             variable "Motor_Temp"  (declared at line 365)
@@ -34,6 +35,12 @@ compiling com_can.c...
       switch(GET_MSG_ID(frame->id)){
       ^
 ..\Source\com_can.c: 1 warning, 0 errors
+compiling encoder.c...
+..\Source\encoder.c(459): warning:  #3170-D: use of a const variable in a constant expression is nonstandard in C
+  float vel_vec[vel_average_filter_num] = {0.0f};
+..\Source\encoder.c(523): warning:  #177-D: variable "count_init"  was declared but never referenced
+  	  static int32_t count_init = 0;
+..\Source\encoder.c: 2 warnings, 0 errors
 compiling motor_ctrl.c...
 ..\Source\motor_ctrl.c(66): warning:  #2532-D: support for trigraphs is disabled
   // coef: ???????(??->??????)
@@ -59,10 +66,10 @@ compiling motor_ctrl.c...
   static inline float calc_temperature_celsius(float r_ntc) {
 ..\Source\motor_ctrl.c: 11 warnings, 0 errors
 linking...
-Program Size: Code=28508 RO-data=6932 RW-data=16472 ZI-data=12344  
+Program Size: Code=28692 RO-data=6932 RW-data=16472 ZI-data=12344  
 FromELF: creating hex file...
 After Build - User command #1: "C:\Keil_v5\\ARM\ARMCC\bin\fromelf.exe" --bincombined ".\object\dgm_app_fw.axf" --output="C:\code\gd32\c1_driver\Firmware_app\MDK-ARM\object\\dgm_app_fw.bin"
-".\object\dgm_app_fw.axf" - 0 Error(s), 12 Warning(s).
+".\object\dgm_app_fw.axf" - 0 Error(s), 14 Warning(s).
 
 <h2>Software Packages used:</h2>
 
