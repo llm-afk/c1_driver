@@ -1050,7 +1050,7 @@ float pos_err;
 float vel_err;
 float head_tor;
 extern float raw_rad_data;
-extern int16_t Multi_Turns;
+extern int32_t Multi_Turns;
 extern	int init_in;
 extern	uint16_t init_ex;
 extern	uint16_t init_in_offset;
@@ -1294,6 +1294,8 @@ void MC_high_priority_task(void)
 //				encoder_one = Encoder.raw;
 //				encoder_two = EX_ENCODER_VALUE;
 //			if(count_tor_test %2 == 0){
+//					Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 500)/12.0f;
+
 				motor_mit_control();
 
         servo_loop();

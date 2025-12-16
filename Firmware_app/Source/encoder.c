@@ -448,7 +448,7 @@ int32_t ENCODER_read(void)
     return (sample_data >> 2);
 }
 float raw_rad_data = 0.0f;
-	int16_t Multi_Turns;
+	int32_t Multi_Turns;
 	int init_in;
 	uint16_t init_ex;
 	uint16_t init_in_offset;
@@ -458,6 +458,107 @@ float Real_Velocity;
 static const int32_t vel_average_filter_num = 32;
 float vel_vec[vel_average_filter_num] = {0.0f};
 float Velocity_Filtered;
+
+
+#include <stdint.h>
+#include <math.h>
+
+// --- ?????????? ---
+#define ENCODER_RESOLUTION 16384 
+#define TWO_PI 6.28318530718f 
+#define US_TO_S_FACTOR 1000000.0f 
+
+// --- ??/???? ---
+// ????????(????)
+#define MAX_PHYSICAL_SPEED_RADS 32.0f*12 
+
+// --- ?????? ---
+#define MAF_FILTER_SIZE 32 
+
+// --- ?????? ---
+static uint16_t last_position = 0;
+static float speed_history[MAF_FILTER_SIZE] = {0.0f};
+static uint8_t history_index = 0; 
+static uint8_t sample_count = 0; 
+static uint8_t is_first_call = 1;
+
+
+/**
+ * @brief ?14???????????????????? (rad/s)
+ *
+ * @param current_position ??????????? (0 ~ 16383)
+ * @param delta_time_us ???????????????? (??,us)
+ * @return float ?????? (rad/s),???? [-MAX_PHYSICAL_SPEED_RADS, +MAX_PHYSICAL_SPEED_RADS] ???
+ */
+float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time_us) {
+    
+    // 1. ??????
+    if (is_first_call) {
+        last_position = current_position;
+        is_first_call = 0;
+        return 0.0f; 
+    }
+
+    // 2. ?????????
+    if (delta_time_us <= 0) {
+        return 0.0f; 
+    }
+    
+    float delta_time_s = (float)delta_time_us / US_TO_S_FACTOR;
+
+    // 3. ??????? (?P),????????
+    int32_t delta_position;
+    delta_position = (int32_t)current_position - last_position; 
+    const int32_t half_resolution = ENCODER_RESOLUTION / 2;
+    
+    if (delta_position > half_resolution) {
+        delta_position -= ENCODER_RESOLUTION;
+    } else if (delta_position < -half_resolution) {
+        delta_position += ENCODER_RESOLUTION;
+    }
+    
+    
+    // 4. ??????? (Raw Angular Velocity) (rad/s)
+    float raw_angular_velocity = ((float)delta_position / ENCODER_RESOLUTION) * (TWO_PI / delta_time_s);
+
+    
+    // 5. ?? ??:??????/???
+    // ??????,???????????????
+    float limited_raw_velocity = raw_angular_velocity;
+    
+    if (limited_raw_velocity > MAX_PHYSICAL_SPEED_RADS) {
+        limited_raw_velocity = MAX_PHYSICAL_SPEED_RADS;
+    } else if (limited_raw_velocity < -MAX_PHYSICAL_SPEED_RADS) {
+        limited_raw_velocity = -MAX_PHYSICAL_SPEED_RADS;
+    }
+    // ?????????????????????????????
+
+    
+    // 6. ???? (Moving Average Filter)
+    
+    // A. ????????
+    speed_history[history_index] = limited_raw_velocity;
+    
+    // B. ?????????
+    history_index = (history_index + 1) % MAF_FILTER_SIZE;
+    if (sample_count < MAF_FILTER_SIZE) {
+        sample_count++;
+    }
+
+    // C. ?????
+    float speed_sum = 0.0f;
+    for (uint8_t i = 0; i < sample_count; i++) {
+        speed_sum += speed_history[i];
+    }
+    
+    float filtered_angular_velocity = speed_sum / sample_count;
+
+    // 7. ???????
+    last_position = current_position;
+    
+    return filtered_angular_velocity;
+}
+
 void multi_encoder(void){
 	
 	static uint16_t Mech_Angle_Old;
@@ -508,11 +609,14 @@ void multi_encoder(void){
 			vel_vec[0] = Real_Velocity;
 		float	Real_Velocity_Filtered = vel_sum / (float)vel_average_filter_num;
 		raw_rad_data = Real_Angle;
-Velocity_Filtered = Real_Velocity_Filtered;
+//Velocity_Filtered = Real_Velocity_Filtered;
 
 }
 
 int encoder_count = 0;
+
+
+
 
 void ENCODER_loop(void)
 {
@@ -597,10 +701,14 @@ void ENCODER_loop(void)
     if (ABS(Encoder.pll_vel) < Encoder.snap_threshold) {
         Encoder.pll_vel = 0.0f;
     }
-    
+//		Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 500);
     /* Outputs from Encoder for Controller */
     Encoder.shadow_count += delta_count;
     Encoder.phase = Encoder.pll_pos * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
     Encoder.vel = Encoder.pll_vel;
     Encoder.phase_vel = Encoder.vel * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
+//		Velocity_Filtered = Encoder.vel/2608.917197/12.0f;
+							Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50)/12.0f;
+
+
 }

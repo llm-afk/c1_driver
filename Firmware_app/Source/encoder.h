@@ -4,7 +4,7 @@
 #include "motor_ctrl.h"
 
 #define ENCODER_CALIB_CURRENT   2.0f
-#define ENCODER_PLL_BANDWIDTH   2000.0f     // rad/s
+#define ENCODER_PLL_BANDWIDTH   1500.0f     // rad/s
 #define ENCODER_PLL_DT          CURRENT_CTRL_PERIOD
 
 #define ENCODER_BITS            (14)
@@ -68,6 +68,7 @@ void ENCODER_init(void);
 void ENCODER_calib_start(void);
 void ENCODER_calib_end(void);
 void ENCODER_calib_loop(float dt);
+float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time_us);
 
 int32_t ENCODER_EX_read(void);
 int32_t ENCODER_EX_read_rectified(void);
