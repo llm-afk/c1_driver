@@ -79,7 +79,8 @@ typedef enum {
     ERR_OVER_CURRENT_SOFT       = 0x0020,
     ERR_OVER_LOAD               = 0x0040,
     ERR_HEARTBEAT_TIMEOUT       = 0x0080,
-    
+		ERR_MULTI_CHECK_ERROR       = 0x0100,
+
     ERR_ENC_CALIB               = 0x4000,
     ERR_ADC_SELFTEST            = 0x8000,
 } tErrorCode;
@@ -95,6 +96,7 @@ typedef enum {
 #define CW_CMD_RESET_HOME                   0x03
 #define CW_CMD_ERROR_RESET                  0xFF
 #define CW_CMD_DEV_ENCODER_CALIB            0xF1
+#define CW_CMD_DEV_MULTI_CALIB            0xF2
 
 
 //*****************************************************************************
@@ -158,6 +160,7 @@ typedef enum {
     MCS_IDLE                        = 1,
     MCS_OPERATION                   = 2,
     MCS_ENCODER_CALIB               = 4,
+		MCS_EX_ENCODER_CHECK            = 8,
 } tMCState;
 
 typedef enum {

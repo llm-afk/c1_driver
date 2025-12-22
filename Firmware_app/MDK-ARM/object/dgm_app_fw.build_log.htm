@@ -27,49 +27,31 @@ Project File Date:  09/14/2025
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'dgm_app'
-compiling od.c...
-compiling com_can.c...
-..\Source\com_can.c(157): warning:  #546-D: transfer of control bypasses initialization of:
-            variable "Motor_Temp"  (declared at line 365)
-            variable "Drive_Temp"  (declared at line 366)
-      switch(GET_MSG_ID(frame->id)){
-      ^
-..\Source\com_can.c: 1 warning, 0 errors
 compiling encoder.c...
 ..\Source\encoder.c(459): warning:  #3170-D: use of a const variable in a constant expression is nonstandard in C
   float vel_vec[vel_average_filter_num] = {0.0f};
-..\Source\encoder.c(523): warning:  #177-D: variable "count_init"  was declared but never referenced
+..\Source\encoder.c(470): warning:  #177-D: variable "Mech_Angle"  was declared but never referenced
+  	uint16_t Mech_Angle = encoder_one;
+..\Source\encoder.c(471): warning:  #177-D: variable "init_multi"  was declared but never referenced
+  	static bool init_multi = true;
+..\Source\encoder.c(501): warning:  #177-D: variable "Mech_Angle_Side_Err"  was declared but never referenced
+  	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
+..\Source\encoder.c(541): warning:  #940-D: missing return statement at end of non-void function "Multi_Turn_Test" 
+  }
+..\Source\encoder.c(551): warning:  #177-D: variable "count_init"  was declared but never referenced
   	  static int32_t count_init = 0;
-..\Source\encoder.c: 2 warnings, 0 errors
-compiling motor_ctrl.c...
-..\Source\motor_ctrl.c(66): warning:  #2532-D: support for trigraphs is disabled
-  // coef: ???????(??->??????)
-..\Source\motor_ctrl.c(688): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		double s = (MotorControl.iq_filtered >= 0.0) ? 1.0 : -1.0;
-..\Source\motor_ctrl.c(1222): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
-..\Source\motor_ctrl.c(1223): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0;
-..\Source\motor_ctrl.c(1233): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
-..\Source\motor_ctrl.c(10): warning:  #550-D: variable "mProfileAcceleration"  was set but never used
-  static float mProfileAcceleration;
-..\Source\motor_ctrl.c(11): warning:  #550-D: variable "mProfileDeceleration"  was set but never used
-  static float mProfileDeceleration;
-..\Source\motor_ctrl.c(12): warning:  #550-D: variable "mProfileTorqueSlope"  was set but never used
-  static float mProfileTorqueSlope;
-..\Source\motor_ctrl.c(1325): warning:  #177-D: function "position_ctrl_loop"  was declared but never referenced
-  static inline void position_ctrl_loop(void)
-..\Source\motor_ctrl.c(1351): warning:  #177-D: function "velocity_ctrl_loop"  was declared but never referenced
-  static inline void velocity_ctrl_loop(void)
-..\Source\motor_ctrl.c(1013): warning:  #177-D: function "calc_temperature_celsius"  was declared but never referenced
-  static inline float calc_temperature_celsius(float r_ntc) {
-..\Source\motor_ctrl.c: 11 warnings, 0 errors
+..\Source\encoder.c(682): warning:  #2532-D: support for trigraphs is disabled
+      double q_offset;      // q1_offset: ????/?? (rad)
+..\Source\encoder.c(785): warning:  #223-D: function "COM_CAN_report_err" declared implicitly
+  	   COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
+..\Source\encoder.c(898): warning:  #940-D: missing return statement at end of non-void function "check_ex_encoder" 
+  }
+..\Source\encoder.c: 9 warnings, 0 errors
 linking...
-Program Size: Code=28692 RO-data=6932 RW-data=16472 ZI-data=12344  
+Program Size: Code=32864 RO-data=7224 RW-data=16504 ZI-data=12392  
 FromELF: creating hex file...
 After Build - User command #1: "C:\Keil_v5\\ARM\ARMCC\bin\fromelf.exe" --bincombined ".\object\dgm_app_fw.axf" --output="C:\code\gd32\c1_driver\Firmware_app\MDK-ARM\object\\dgm_app_fw.bin"
-".\object\dgm_app_fw.axf" - 0 Error(s), 14 Warning(s).
+".\object\dgm_app_fw.axf" - 0 Error(s), 9 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -82,7 +64,7 @@ Package Vendor: GigaDevice
   C:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:01
+Build Time Elapsed:  00:00:00
 </pre>
 </body>
 </html>

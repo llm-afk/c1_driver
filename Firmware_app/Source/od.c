@@ -116,7 +116,7 @@ static void dictionary_init(void)
     ODObjs.can_baudrate = 2;
     ODObjs.data_baudrate = 2;
     ODObjs.heartbeat_producer_time = 0;
-    ODObjs.heartbeat_consumer_time = 100;
+    ODObjs.heartbeat_consumer_time = 0;
     
     ODObjs.motor_pp = 8;
     ODObjs.motor_r = 0.5629f;
@@ -395,7 +395,8 @@ uint8_t OD_write_2(uint16_t idx, uint8_t *data)
 			for(int i=0; i<4; i++){
 					data[i] = 0;
 			}
-			
+						flag_zero[1] = 1;
+
 			return cs;
 
 		}

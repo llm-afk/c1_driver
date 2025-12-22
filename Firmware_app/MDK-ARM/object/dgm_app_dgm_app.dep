@@ -1,6 +1,6 @@
 Dependencies for Project 'dgm_app', Target 'dgm_app': (DO NOT MODIFY !)
 CompilerVersion: 5060960::V5.06 update 7 (build 960)::.\ARMCC
-F (..\Source\main.c)(0x68CC02F4)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\main.o --omf_browse .\object\main.crf --depend .\object\main.d)
+F (..\Source\main.c)(0x69490010)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\main.o --omf_browse .\object\main.crf --depend .\object\main.d)
 I (..\Source\main.h)(0x68CA17A7)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
 I (..\CMSIS\core_cm4.h)(0x637C238E)
@@ -34,14 +34,14 @@ I (..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h)(0x637C238E)
 I (..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h)(0x637C238E)
 I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
-I (..\Source\soc.h)(0x68CA17A7)
+I (..\Source\soc.h)(0x693A7899)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
-I (..\Source\encoder.h)(0x683FC6A6)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
+I (..\Source\encoder.h)(0x6948BDE0)
+I (..\Source\motor_ctrl.h)(0x69490853)
 I (..\Source\pid.h)(0x64DDF4B2)
 I (..\Source\util.h)(0x66BED85E)
-I (..\Source\od.h)(0x68CBE87B)
-I (..\Source\com_can.h)(0x68CCFBDE)
+I (..\Source\od.h)(0x6948BDE0)
+I (..\Source\com_can.h)(0x69400F48)
 F (..\Source\gd32c10x_it.c)(0x68CA17A7)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\gd32c10x_it.o --omf_browse .\object\gd32c10x_it.crf --depend .\object\gd32c10x_it.d)
 I (..\Source\gd32c10x_it.h)(0x65E5D39E)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
@@ -74,59 +74,18 @@ I (..\GD32C10x_standard_peripheral\Include\gd32c10x_spi.h)(0x637C238E)
 I (..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h)(0x637C238E)
 I (..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h)(0x637C238E)
 I (..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h)(0x637C238E)
-I (..\Source\com_can.h)(0x68CCFBDE)
-I (..\Source\soc.h)(0x68CA17A7)
+I (..\Source\com_can.h)(0x69400F48)
+I (..\Source\soc.h)(0x693A7899)
 I (..\Source\main.h)(0x68CA17A7)
 I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
+I (..\Source\motor_ctrl.h)(0x69490853)
 I (..\Source\pid.h)(0x64DDF4B2)
 I (..\Source\util.h)(0x66BED85E)
-I (..\Source\od.h)(0x68CBE87B)
-F (..\Source\soc.c)(0x68A1A928)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\soc.o --omf_browse .\object\soc.crf --depend .\object\soc.d)
-I (..\Source\soc.h)(0x68CA17A7)
-I (..\Source\main.h)(0x68CA17A7)
-I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
-I (..\CMSIS\core_cm4.h)(0x637C238E)
-I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5F63877C)
-I (..\CMSIS\core_cmInstr.h)(0x637C238E)
-I (..\CMSIS\core_cmFunc.h)(0x637C238E)
-I (..\CMSIS\core_cm4_simd.h)(0x637C238E)
-I (..\CMSIS\GD\GD32C10x\Include\system_gd32c10x.h)(0x637C238E)
-I (..\Source\gd32c10x_libopt.h)(0x65E5D3A2)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_adc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_bkp.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_can.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_crc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_ctc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_dac.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_dbg.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_dma.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_exmc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_exti.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_fmc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_fwdgt.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_gpio.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_i2c.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_misc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_pmu.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_rcu.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_rtc.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_spi.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h)(0x637C238E)
-I (..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h)(0x637C238E)
-I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
-I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
-I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
-I (..\Source\pid.h)(0x64DDF4B2)
-I (..\Source\util.h)(0x66BED85E)
-I (..\Source\od.h)(0x68CBE87B)
-F (..\Source\com_can.c)(0x692D8FF7)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\com_can.o --omf_browse .\object\com_can.crf --depend .\object\com_can.d)
-I (..\Source\com_can.h)(0x68CCFBDE)
-I (..\Source\soc.h)(0x68CA17A7)
+I (..\Source\od.h)(0x6948BDE0)
+F (..\Source\soc.c)(0x693A7899)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\soc.o --omf_browse .\object\soc.crf --depend .\object\soc.d)
+I (..\Source\soc.h)(0x693A7899)
 I (..\Source\main.h)(0x68CA17A7)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
 I (..\CMSIS\core_cm4.h)(0x637C238E)
@@ -161,10 +120,51 @@ I (..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h)(0x637C238E)
 I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
+I (..\Source\motor_ctrl.h)(0x69490853)
 I (..\Source\pid.h)(0x64DDF4B2)
 I (..\Source\util.h)(0x66BED85E)
-I (..\Source\od.h)(0x68CBE87B)
+I (..\Source\od.h)(0x6948BDE0)
+F (..\Source\com_can.c)(0x69490010)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\com_can.o --omf_browse .\object\com_can.crf --depend .\object\com_can.d)
+I (..\Source\com_can.h)(0x69400F48)
+I (..\Source\soc.h)(0x693A7899)
+I (..\Source\main.h)(0x68CA17A7)
+I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
+I (..\CMSIS\core_cm4.h)(0x637C238E)
+I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5F63877C)
+I (..\CMSIS\core_cmInstr.h)(0x637C238E)
+I (..\CMSIS\core_cmFunc.h)(0x637C238E)
+I (..\CMSIS\core_cm4_simd.h)(0x637C238E)
+I (..\CMSIS\GD\GD32C10x\Include\system_gd32c10x.h)(0x637C238E)
+I (..\Source\gd32c10x_libopt.h)(0x65E5D3A2)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_adc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_bkp.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_can.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_crc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_ctc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_dac.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_dbg.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_dma.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_exmc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_exti.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_fmc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_fwdgt.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_gpio.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_i2c.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_misc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_pmu.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_rcu.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_rtc.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_spi.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h)(0x637C238E)
+I (..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h)(0x637C238E)
+I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
+I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
+I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
+I (..\Source\motor_ctrl.h)(0x69490853)
+I (..\Source\pid.h)(0x64DDF4B2)
+I (..\Source\util.h)(0x66BED85E)
+I (..\Source\od.h)(0x6948BDE0)
 I (..\Source\dfu.h)(0x66C6BB76)
 I (..\Source\fifo_buffer.h)(0x64A25868)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x5F63878A)
@@ -172,10 +172,10 @@ I (..\Source\Eeprom\Core\eeprom_emul.h)(0x66BC73C8)
 I (..\Source\Eeprom\Core\eeprom_emul_conf.h)(0x66BC7512)
 I (..\Source\Eeprom\Core\eeprom_emul_types.h)(0x641C4F12)
 I (..\Source\Eeprom\Porting\flash_interface.h)(0x66BC7546)
-F (..\Source\encoder.c)(0x692D85E9)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\encoder.o --omf_browse .\object\encoder.crf --depend .\object\encoder.d)
-I (..\Source\encoder.h)(0x683FC6A6)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
-I (..\Source\soc.h)(0x68CA17A7)
+F (..\Source\encoder.c)(0x69492A1D)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\encoder.o --omf_browse .\object\encoder.crf --depend .\object\encoder.d)
+I (..\Source\encoder.h)(0x6948BDE0)
+I (..\Source\motor_ctrl.h)(0x69490853)
+I (..\Source\soc.h)(0x693A7899)
 I (..\Source\main.h)(0x68CA17A7)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
 I (..\CMSIS\core_cm4.h)(0x637C238E)
@@ -212,13 +212,13 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
 I (..\Source\pid.h)(0x64DDF4B2)
 I (..\Source\util.h)(0x66BED85E)
-I (..\Source\od.h)(0x68CBE87B)
+I (..\Source\od.h)(0x6948BDE0)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x5F63878A)
 I (..\Source\Eeprom\Porting\flash_interface.h)(0x66BC7546)
 I (..\Source\Eeprom\Core\eeprom_emul_types.h)(0x641C4F12)
-F (..\Source\motor_ctrl.c)(0x692D85DE)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\motor_ctrl.o --omf_browse .\object\motor_ctrl.crf --depend .\object\motor_ctrl.d)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
-I (..\Source\soc.h)(0x68CA17A7)
+F (..\Source\motor_ctrl.c)(0x69490632)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\motor_ctrl.o --omf_browse .\object\motor_ctrl.crf --depend .\object\motor_ctrl.d)
+I (..\Source\motor_ctrl.h)(0x69490853)
+I (..\Source\soc.h)(0x693A7899)
 I (..\Source\main.h)(0x68CA17A7)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
 I (..\CMSIS\core_cm4.h)(0x637C238E)
@@ -255,18 +255,18 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
 I (..\Source\pid.h)(0x64DDF4B2)
 I (..\Source\util.h)(0x66BED85E)
-I (..\Source\od.h)(0x68CBE87B)
+I (..\Source\od.h)(0x6948BDE0)
 I (..\Source\motion_planner.h)(0x66C59EE4)
-I (..\Source\encoder.h)(0x683FC6A6)
-I (..\Source\com_can.h)(0x68CCFBDE)
+I (..\Source\encoder.h)(0x6948BDE0)
+I (..\Source\com_can.h)(0x69400F48)
 F (..\Source\motion_planner.c)(0x66C59F0E)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\motion_planner.o --omf_browse .\object\motion_planner.crf --depend .\object\motion_planner.d)
 I (..\Source\motion_planner.h)(0x66C59EE4)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
 I (..\Source\util.h)(0x66BED85E)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
-I (..\Source\soc.h)(0x68CA17A7)
+I (..\Source\motor_ctrl.h)(0x69490853)
+I (..\Source\soc.h)(0x693A7899)
 I (..\Source\main.h)(0x68CA17A7)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
 I (..\CMSIS\core_cm4.h)(0x637C238E)
@@ -299,16 +299,16 @@ I (..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h)(0x637C238E)
 I (..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h)(0x637C238E)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5F63877C)
 I (..\Source\pid.h)(0x64DDF4B2)
-I (..\Source\od.h)(0x68CBE87B)
-F (..\Source\od.c)(0x692D900B)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\od.o --omf_browse .\object\od.crf --depend .\object\od.d)
-I (..\Source\od.h)(0x68CBE87B)
+I (..\Source\od.h)(0x6948BDE0)
+F (..\Source\od.c)(0x69490010)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\od.o --omf_browse .\object\od.crf --depend .\object\od.d)
+I (..\Source\od.h)(0x6948BDE0)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5F63877C)
 I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5F63877C)
 I (..\Source\util.h)(0x66BED85E)
-I (..\Source\encoder.h)(0x683FC6A6)
-I (..\Source\motor_ctrl.h)(0x68C6B483)
-I (..\Source\soc.h)(0x68CA17A7)
+I (..\Source\encoder.h)(0x6948BDE0)
+I (..\Source\motor_ctrl.h)(0x69490853)
+I (..\Source\soc.h)(0x693A7899)
 I (..\Source\main.h)(0x68CA17A7)
 I (..\CMSIS\GD\GD32C10x\Include\gd32c10x.h)(0x637C238E)
 I (..\CMSIS\core_cm4.h)(0x637C238E)
@@ -345,7 +345,7 @@ I (..\Source\Eeprom\Core\eeprom_emul.h)(0x66BC73C8)
 I (..\Source\Eeprom\Core\eeprom_emul_conf.h)(0x66BC7512)
 I (..\Source\Eeprom\Core\eeprom_emul_types.h)(0x641C4F12)
 I (..\Source\Eeprom\Porting\flash_interface.h)(0x66BC7546)
-I (..\Source\com_can.h)(0x68CCFBDE)
+I (..\Source\com_can.h)(0x69400F48)
 F (..\Source\dfu.c)(0x66C6EF06)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -I ..\Source -I ..\CMSIS -I ..\CMSIS\GD\GD32C10x\Include -I ..\GD32C10x_standard_peripheral\Include -I ..\Source\Eeprom\Core -I ..\Source\Eeprom\Porting --c99-IC:\Users\17511\AppData\Local\Arm\Packs\GigaDevice\GD32C10x_DFP\1.4.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="532" -DGD32C10x -DUSE_STDPERIPH_DRIVER -DGD32C10X -DARM_MATH_CM4-o .\object\dfu.o --omf_browse .\object\dfu.crf --depend .\object\dfu.d)
 I (..\Source\dfu.h)(0x66C6BB76)
 I (..\Source\main.h)(0x68CA17A7)
