@@ -8,3 +8,7 @@ Firmware_boot/MDK-ARM/JLinkLog.txt
 *.crf
 
 *.map
+
+*.dep
+
+*.htm
