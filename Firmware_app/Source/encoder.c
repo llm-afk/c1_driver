@@ -736,6 +736,8 @@ TrajectorySetpoint setpoint;
 float test_time;
 float test_pos;
 extern bool no_reset;
+int32_t in_encoder_turns = 0;
+int32_t ex_encoder_turns = 0;
 
 bool check_ex_encoder(void){
 	static int32_t step = 0;
@@ -774,8 +776,8 @@ bool check_ex_encoder(void){
 //	if(current_time > TOTAL_TIME){
 //		multi_check_flag = 0;
 //	}
-test_time = Get_Multi_Turns();
-test_pos = multi_turn_check_111;
+ex_encoder_turns = Get_Multi_Turns();
+in_encoder_turns = multi_turn_check_111;
 	uint8_t data[8];
 //	return 0;
 no_reset = true;

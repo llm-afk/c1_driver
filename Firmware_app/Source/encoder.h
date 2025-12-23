@@ -68,7 +68,7 @@ void ENCODER_init(void);
 void ENCODER_calib_start(void);
 void ENCODER_calib_end(void);
 void ENCODER_calib_loop(float dt);
-
+bool check_ex_encoder(void);
 int32_t ENCODER_EX_read(void);
 int32_t ENCODER_EX_read_rectified(void);
 int32_t ENCODER_read(void);

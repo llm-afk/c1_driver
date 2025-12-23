@@ -157,6 +157,9 @@ extern int16_t multi_test;
 extern float test_time;
 extern float test_pos;
 extern uint32_t state_mcs;
+extern uint32_t multi_check_flag;
+extern int32_t in_encoder_turns;
+extern int32_t ex_encoder_turns;
 static void parse_frame(CanFrame *frame)
 {
     switch(GET_MSG_ID(frame->id)){
@@ -283,11 +286,16 @@ static void parse_frame(CanFrame *frame)
 //				
 						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
+						*(float*)&frame->data[0] = MotorControl.raw_pos;
+            *(float*)&frame->data[4] = MotorControl.raw_vel;
+						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
+						if(multi_check_flag){
+							*(float*)&frame->data[0] = MotorControl.raw_pos;
+							*(float*)&frame->data[4] = ex_encoder_turns;
+							*(float*)&frame->data[8] = in_encoder_turns - ex_encoder_turns; 
+						}
 
-            *(float*)&frame->data[0] = MotorControl.raw_pos;
-            *(float*)&frame->data[4] = state_mcs;
-						*(float*)&frame->data[8] = test_pos - test_time; 
-							*(int16_t*)&frame->data[12] = Motor_Temp;
+						*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
 //						*(float*)&frame->data[0] = encoder_raw;
 //            *(float*)&frame->data[4] = encoder_one;
