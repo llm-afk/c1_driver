@@ -152,6 +152,14 @@ extern float encoder_two;
 uint8_t enable_data[8] = {0x2b, 0x02, 0x20, 0x00, 0x01, 0x00, 0x00, 0x00};
 uint8_t mode_data[8] = {0x2f, 0x03, 0x20, 0x00, 0x03, 0x00, 0x00, 0x00};
 uint32_t count_1 = 0;
+extern int16_t multi_test;
+//extern MotionInput input_data;
+extern float test_time;
+extern float test_pos;
+extern uint32_t state_mcs;
+extern uint32_t multi_check_flag;
+extern int32_t in_encoder_turns;
+extern int32_t ex_encoder_turns;
 static void parse_frame(CanFrame *frame)
 {
     switch(GET_MSG_ID(frame->id)){
@@ -243,12 +251,25 @@ static void parse_frame(CanFrame *frame)
 //            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
 //            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
 //            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
+					
+					
+//						if( MC_get_state() == MCS_OPERATION){
+//							MotorControl.pos_set = *(float*)&frame->data[0];
+//							MotorControl.velocity_set = *(float*)&frame->data[4];
+//							MotorControl.current_mit = *(float*)&frame->data[8];
+//							MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
+//							MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
+//						}
 
-						MotorControl.pos_set = *(float*)&frame->data[0];
-						MotorControl.velocity_set = *(float*)&frame->data[4];
-						MotorControl.current_mit = *(float*)&frame->data[8];
-						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
-						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
+
+//							MotorControl.velocity_set = input_data.time_current;
+//							MotorControl.current_mit = *(float*)&frame->data[8];
+
+//						MotorControl.pos_set = *(float*)&frame->data[0];
+//						MotorControl.velocity_set = *(float*)&frame->data[4];
+//						MotorControl.current_mit = *(float*)&frame->data[8];
+//						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
+//						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
 //            MC_pdo_profile_torque(*(float*)&frame->data[8], 0.1f);
 
             // tx msg
@@ -265,11 +286,16 @@ static void parse_frame(CanFrame *frame)
 //				
 						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
-
-            *(float*)&frame->data[0] = MotorControl.raw_pos;
+						*(float*)&frame->data[0] = MotorControl.raw_pos;
             *(float*)&frame->data[4] = MotorControl.raw_vel;
 						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
-							*(int16_t*)&frame->data[12] = Motor_Temp;
+						if(multi_check_flag){
+							*(float*)&frame->data[0] = MotorControl.raw_pos;
+							*(float*)&frame->data[4] = ex_encoder_turns;
+							*(float*)&frame->data[8] = in_encoder_turns - ex_encoder_turns; 
+						}
+
+						*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
 //						*(float*)&frame->data[0] = encoder_raw;
 //            *(float*)&frame->data[4] = encoder_one;

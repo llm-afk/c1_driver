@@ -332,12 +332,79 @@ uint8_t OD_write_2(uint16_t idx, uint8_t *data)
 		if(idx == 0x2070){
 			*(uint16_t*)data = Encoder.raw;
 			flag_zero[0] = 1;
-		}
-		if(idx == 0x2071){
-			*(uint16_t*)data = EX_ENCODER_VALUE;
-			flag_zero[1] = 1;
+			
+			
+			 if(entry != NULL && entry->attribute & ATTR_W && entry->datasize == 2){
+        if(*(uint16_t*)entry->obj != *(uint16_t*)data){
+            *(uint16_t*)entry->obj = *(uint16_t*)data;
+            if(entry->attribute & ATTR_ROM){
+                EE_Status ee_status = EE_WriteVariable16bits(entry->index, *(uint16_t*)entry->obj);
+                if((ee_status & EE_STATUSMASK_ERROR) == EE_OK){
+                    cs = CS_W_ACK;
+                }
+                if((ee_status & EE_STATUSMASK_CLEANUP) == EE_STATUSMASK_CLEANUP){
+                    EE_CleanUp();
+                }
+            }else{
+                cs = CS_W_ACK;
+            }
+        }else{
+            cs = CS_W_ACK;
+        }
+			}
 
-		}		
+			if(cs == CS_W_ACK && entry->update_func != NULL){
+					if(0 != entry->update_func()){
+							cs = CS_ERR;
+					}
+			}
+			
+			for(int i=0; i<4; i++){
+					data[i] = 0;
+			}
+			
+			idx = 0x2071;
+			OD_entry_t *entry_2071 = find_entry(idx);
+			*(uint16_t*)data = EX_ENCODER_VALUE;
+
+			if(entry_2071 != NULL && entry_2071->attribute & ATTR_W && entry_2071->datasize == 2){
+        if(*(uint16_t*)entry_2071->obj != *(uint16_t*)data){
+            *(uint16_t*)entry_2071->obj = *(uint16_t*)data;
+            if(entry_2071->attribute & ATTR_ROM){
+                EE_Status ee_status = EE_WriteVariable16bits(entry_2071->index, *(uint16_t*)entry_2071->obj);
+                if((ee_status & EE_STATUSMASK_ERROR) == EE_OK){
+                    cs = CS_W_ACK;
+                }
+                if((ee_status & EE_STATUSMASK_CLEANUP) == EE_STATUSMASK_CLEANUP){
+                    EE_CleanUp();
+                }
+            }else{
+                cs = CS_W_ACK;
+            }
+        }else{
+            cs = CS_W_ACK;
+        }
+			}
+
+			if(cs == CS_W_ACK && entry_2071->update_func != NULL){
+					if(0 != entry_2071->update_func()){
+							cs = CS_ERR;
+					}
+			}
+			
+			for(int i=0; i<4; i++){
+					data[i] = 0;
+			}
+						flag_zero[1] = 1;
+
+			return cs;
+
+		}
+//		if(idx == 0x2071){
+//			*(uint16_t*)data = EX_ENCODER_VALUE;
+//			flag_zero[1] = 1;
+
+//		}		
     if(entry != NULL && entry->attribute & ATTR_W && entry->datasize == 2){
         if(*(uint16_t*)entry->obj != *(uint16_t*)data){
             *(uint16_t*)entry->obj = *(uint16_t*)data;

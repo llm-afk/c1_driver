@@ -29,12 +29,12 @@ static volatile tFSM mFSM = {
     .state_next = MCS_IDLE,
     .state_next_ready = 0,
 };
-
+uint32_t state_mcs;
 tMotorControl MotorControl = {
     .is_bootup = false,
     .BusVoltage = 24.0f,
 };
-
+extern uint32_t multi_check_flag;
 static void operation_mode_reset(void);
 static void enter_state(void);
 static void exit_state(void);
@@ -152,6 +152,7 @@ extern  uint16_t mHeartBeatConsumerTime;
 extern  uint32_t mHeartbeatConsumerTick ;
 int MC_controlword_update(void)
 {
+	state_mcs ++;
     // CMD
     switch(CONTROL_WORD & 0x00FF){
         case CW_CMD_OPERATION_ENABLE:
@@ -173,7 +174,9 @@ int MC_controlword_update(void)
         case CW_CMD_DEV_ENCODER_CALIB:
             MC_set_state(MCS_ENCODER_CALIB);
             break;
-        
+        case CW_CMD_DEV_MULTI_CALIB:
+						MC_set_state(MCS_EX_ENCODER_CHECK);
+            break;
         default:
             break;
     }
@@ -333,9 +336,11 @@ tMCState MC_get_state(void)
 {
     return mFSM.state;
 }
-
+uint32_t check_start = 0;
 int MC_set_state(tMCState state)
 {
+//		state_mcs = mFSM.state_next;
+
     switch (state) {
         case MCS_IDLE:
             mFSM.state_next = state;
@@ -363,6 +368,18 @@ int MC_set_state(tMCState state)
 
             mFSM.state_next = state;
             mFSM.state_next_ready = 0;
+            break;
+        case MCS_EX_ENCODER_CHECK:
+//            if(ERROR_CODE & (~ERR_ENC_CALIB)){
+//                return -1;
+//            }
+							uint16_t idx = 0x2003;
+							uint8_t data = 3;
+							OD_write_1(idx, &data);
+							idx = 0x2002;
+							uint8_t enable_data[4] = {0x01, 0x00,0x00,0x00};
+							OD_write_2(idx, enable_data);
+							multi_check_flag = 1;
             break;
 
         default:
@@ -720,7 +737,8 @@ static void servo_loop(void)
 //        COM_CAN_report_err(ERR_UNDER_VOLTAGE);
 //    }
     // Protect check ========================================================
-
+//				        MC_set_state(MCS_OPERATION);
+//								multi_check_flag = 1;
     switch(mFSM.state){
         case MCS_OPERATION:
 
@@ -758,6 +776,7 @@ static void servo_loop(void)
         
         case MCS_ENCODER_CALIB:
             ENCODER_calib_loop(SERVO_CTRL_PERIOD);
+
             break;
 
         default:
@@ -1126,7 +1145,7 @@ void MC_low_priority_task(void)
         IN_ENCODER_VALUE = Encoder.count_in_cpr;
         
         // ex encoder value update
-        EX_ENCODER_VALUE = ENCODER_EX_read();
+//        EX_ENCODER_VALUE = ENCODER_EX_read();
 			
     }
     
@@ -1160,7 +1179,7 @@ void MC_low_priority_task(void)
                     curr_value = phase_b_adc_offset;
                     break;
                 case 8:
-                    curr_value = Multi_Turns;
+                    curr_value = 0;
                     break;
                 case 9:
                     curr_value = IN_ENCODER_OFFSET;
@@ -1294,8 +1313,9 @@ void MC_high_priority_task(void)
 //				encoder_one = Encoder.raw;
 //				encoder_two = EX_ENCODER_VALUE;
 //			if(count_tor_test %2 == 0){
-//					Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 500)/12.0f;
-
+			if(multi_check_flag){
+				check_ex_encoder();
+			}
 				motor_mit_control();
 
         servo_loop();

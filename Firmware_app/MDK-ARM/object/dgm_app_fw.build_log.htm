@@ -27,8 +27,43 @@ Project File Date:  09/14/2025
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'dgm_app'
+<<<<<<< HEAD
 After Build - User command #1: "C:\Keil_v5\\ARM\ARMCC\bin\fromelf.exe" --bincombined ".\object\dgm_app_fw.axf" --output="C:\code\gd32\c1_driver\Firmware_app\MDK-ARM\object\\dgm_app_fw.bin"
 ".\object\dgm_app_fw.axf" - 0 Error(s), 0 Warning(s).
+=======
+compiling com_can.c...
+..\Source\com_can.c(165): warning:  #546-D: transfer of control bypasses initialization of:
+            variable "Motor_Temp"  (declared at line 391)
+            variable "Drive_Temp"  (declared at line 392)
+      switch(GET_MSG_ID(frame->id)){
+      ^
+..\Source\com_can.c: 1 warning, 0 errors
+compiling encoder.c...
+..\Source\encoder.c(459): warning:  #3170-D: use of a const variable in a constant expression is nonstandard in C
+  float vel_vec[vel_average_filter_num] = {0.0f};
+..\Source\encoder.c(470): warning:  #177-D: variable "Mech_Angle"  was declared but never referenced
+  	uint16_t Mech_Angle = encoder_one;
+..\Source\encoder.c(471): warning:  #177-D: variable "init_multi"  was declared but never referenced
+  	static bool init_multi = true;
+..\Source\encoder.c(501): warning:  #177-D: variable "Mech_Angle_Side_Err"  was declared but never referenced
+  	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
+..\Source\encoder.c(541): warning:  #940-D: missing return statement at end of non-void function "Multi_Turn_Test" 
+  }
+..\Source\encoder.c(551): warning:  #177-D: variable "count_init"  was declared but never referenced
+  	  static int32_t count_init = 0;
+..\Source\encoder.c(682): warning:  #2532-D: support for trigraphs is disabled
+      double q_offset;      // q1_offset: ????/?? (rad)
+..\Source\encoder.c(787): warning:  #223-D: function "COM_CAN_report_err" declared implicitly
+  	   COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
+..\Source\encoder.c(900): warning:  #940-D: missing return statement at end of non-void function "check_ex_encoder" 
+  }
+..\Source\encoder.c: 9 warnings, 0 errors
+linking...
+Program Size: Code=32872 RO-data=7224 RW-data=16504 ZI-data=12392  
+FromELF: creating hex file...
+After Build - User command #1: "C:\Keil_v5\\ARM\ARMCC\bin\fromelf.exe" --bincombined ".\object\dgm_app_fw.axf" --output="C:\code\gd32\c1_driver\Firmware_app\MDK-ARM\object\\dgm_app_fw.bin"
+".\object\dgm_app_fw.axf" - 0 Error(s), 10 Warning(s).
+>>>>>>> multi_turn
 
 <h2>Software Packages used:</h2>
 

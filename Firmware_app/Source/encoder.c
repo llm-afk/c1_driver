@@ -55,7 +55,7 @@ void ENCODER_calib_end(void)
 {
 
 }
-
+uint32_t multi_check_flag = 0;
 void ENCODER_calib_loop(float dt)
 {
     static int count_raw_start;
@@ -223,6 +223,7 @@ void ENCODER_calib_loop(float dt)
                 save_encoder_config();
                 
                 MC_set_state(MCS_IDLE);
+//								multi_check_flag = 1;
                 Encoder.Calib.calib_step ++;
             }
             break;
@@ -558,11 +559,11 @@ float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time
     
     return filtered_angular_velocity;
 }
+int16_t multi_test = 0;
 
-void multi_encoder(void){
-	
-	static uint16_t Mech_Angle_Old;
-	static float Real_Angle_Old;
+int32_t Get_Multi_Turns(){
+	int16_t Multi_Turns;
+
 	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
 	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
 	uint16_t encoder_two = ENCODER_EX_read();
@@ -571,20 +572,41 @@ void multi_encoder(void){
 	static bool init_multi = true;
 	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
 	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
-		Mech_Differ -= 300;
+		Mech_Differ -= 1000;
 	}
 	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) <= 10000){
-		Mech_Differ += 300;
+		Mech_Differ += 1000;
 	}					
 
 	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
-	if(init_multi){
+
+	
+	if(1){
 		init_in_offset = IN_ENCODER_OFFSET;
 		init_ex_offset = EX_ENCODER_OFFSET;
 		init_in = Encoder.raw;
 		init_ex = encoder_two;
 		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
-		Mech_Angle_Old = encoder_one;
+	}
+	return Multi_Turns;
+}
+int32_t multi_turn_check_111 = 0;
+bool init_multi = true;
+
+void multi_encoder(void){
+	static	int16_t Multi_Turns;
+
+	static uint16_t Mech_Angle_Old;
+	static float Real_Angle_Old;
+	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
+	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
+	int encoder_one = Encoder.raw;
+	uint16_t Mech_Angle = encoder_one;
+	
+
+	
+	if(init_multi){
+		Multi_Turns = Get_Multi_Turns();
 	}
 	init_multi = false;
 	// if(init_multi){
@@ -596,12 +618,13 @@ void multi_encoder(void){
 
 	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
 	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
+	multi_turn_check_111 = Multi_Turns;
 	Mech_Angle_Old = Mech_Angle;
 	float Real_Angle = ((float)((int)Multi_Turns) * M_2PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
 	Real_Velocity = (Real_Angle - Real_Angle_Old) / ENCODER_PLL_DT;
 	Real_Angle_Old = Real_Angle;
 	float vel_sum = Real_Velocity;
-			for (int i = 0; i < vel_average_filter_num; i++)
+			for (int i = 1; i < vel_average_filter_num; i++)
 			{
 				vel_vec[vel_average_filter_num - i] = vel_vec[vel_average_filter_num - i - 1];
 				vel_sum += vel_vec[vel_average_filter_num - i];
@@ -611,6 +634,11 @@ void multi_encoder(void){
 		raw_rad_data = Real_Angle;
 //Velocity_Filtered = Real_Velocity_Filtered;
 
+}
+
+
+bool Multi_Turn_Test(void){
+	
 }
 
 int encoder_count = 0;
@@ -711,4 +739,270 @@ void ENCODER_loop(void)
 							Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50)/12.0f;
 
 
+}
+
+
+void SmoothTransition(
+    double t, 
+    double T, 
+    double q_start, 
+    double q_offset, 
+    double *q, 
+    double *qd
+) {
+    // 1. ??????????? q_final
+    // q_final = q_start + q_offset
+    double q_final = q_start + q_offset; 
+    
+    // 2. ??????????
+    if (t >= T) {
+        *q = q_final;
+        *qd = 0.0;
+        return;
+    }
+    
+    // 3. ???????? t
+    if (t <= 0.0) {
+        *q = q_start;
+        *qd = 0.0;
+        return;
+    }
+
+    // --- ???? ---
+    const double pi = M_PI; // M_PI ??? math.h ?
+    double delta_q = q_final - q_start; // ??? (rad)
+    double ratio = t / T;               // ????? t/T (0?1)
+    
+    // ????
+    *q = q_start + delta_q * 0.5 * (1.0 - cos(pi * ratio));
+    
+    // ????
+    // ??: cos(pi*ratio) ???? -sin(pi*ratio) * (pi/T),
+    // ?? 1 - cos(...) ???? +sin(pi*ratio) * (pi/T)
+    *qd = delta_q * 0.5 * (pi / T) * sin(pi * ratio);
+}
+
+
+typedef struct {
+    double time_current;  // t: ???? (s)
+    double time_total;    // T: ????? (s)
+    double q_start;       // q0: ????????? (rad)
+    double q_offset;      // q1_offset: ????/?? (rad)
+} MotionInput;
+
+/**
+ * @brief 2. ???????? (TrajectorySetpoint)
+ * ???????????
+ */
+typedef struct {
+    double position;    // q: ???????? (rad)
+    double velocity;    // qd: ???????? (rad/s)
+} TrajectorySetpoint;
+
+
+/**
+ * @brief ????????????????
+ * * @param input ????????????
+ * @return TrajectorySetpoint ?????????????
+ */
+TrajectorySetpoint SmoothTransition_Struct(const MotionInput *input) {
+    
+    TrajectorySetpoint output;
+    
+    // 1. ??????????? q_final
+    // q_final = q_start + q_offset
+    double q_final = input->q_start + input->q_offset; 
+    
+    // 2. ??????????
+    if (input->time_current >= input->time_total) {
+        output.position = q_final;
+        output.velocity = 0.0;
+        return output;
+    }
+    
+    // 3. ???????? t (??????)
+    if (input->time_current <= 0.0) {
+        output.position = input->q_start;
+        output.velocity = 0.0;
+        return output;
+    }
+
+    // --- ???? ---
+    double delta_q = q_final - input->q_start; // ??? (rad)
+    double ratio = input->time_current / input->time_total; // ????? t/T (0?1)
+    
+    // ????: q = q_start + delta_q * 0.5 * (1 - cos(pi * ratio))
+    output.position = input->q_start + delta_q * 0.5 * (1.0 - cos(M_PI * ratio));
+    
+    // ????: qd = delta_q * 0.5 * (pi / T) * sin(pi * ratio)
+    output.velocity = delta_q * 0.5 * (M_PI / input->time_total) * sin(M_PI * ratio);
+    
+    return output;
+}
+MotionInput input_data;
+TrajectorySetpoint setpoint;
+float test_time;
+float test_pos;
+extern bool no_reset;
+int32_t in_encoder_turns = 0;
+int32_t ex_encoder_turns = 0;
+
+bool check_ex_encoder(void){
+	static int32_t step = 0;
+	float a =  240*3.14/180.0;
+	float f = 0.1;
+	float c = 0;
+	double PI = 3.1415926;
+	float pos = ((a * sin(2 * PI * f * input_data.time_current) + c));
+	float vel = (2 * PI * f * a * sin(2 * PI * f * input_data.time_current));
+	static uint32_t error_time = 0;
+//		float vel = 0;
+//float pos = 0;
+
+
+//	static double Q_START = 0;       // ?????? q0 = PI/2 rad (90?)
+//	static double Q_OFFSET = 0;      // ???? q1 = 2*PI rad (360?)
+//	const double TOTAL_TIME = 2.5;       // ????? T (?)
+//	const double TIME_STEP = 0.0005;       // ??????? (?)
+//	static double current_time = 0.0;
+//	double desired_q = 0.0;
+//	double desired_qd = 0.0;
+//	current_time += 0.0005;
+//	SmoothTransition(
+//            current_time, 
+//            TOTAL_TIME, 
+//            Q_START, 
+//            Q_OFFSET, 
+//            &desired_q, 
+//            &desired_qd
+//        );
+//	MotorControl.pos_set = desired_q;
+//	MotorControl.velocity_set = desired_qd;
+//	MotorControl.Kp = 100;
+
+//	MotorControl.Kd = 1;
+//	if(current_time > TOTAL_TIME){
+//		multi_check_flag = 0;
+//	}
+ex_encoder_turns = Get_Multi_Turns();
+in_encoder_turns = multi_turn_check_111;
+	uint8_t data[8];
+//	return 0;
+no_reset = true;
+if(Get_Multi_Turns() - multi_turn_check_111){
+	error_time ++;
+		if(error_time > 10){
+	   COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
+
+	}
+}else{
+	error_time = 0;
+	if(error_time > 10){
+	
+	}
+}
+	switch(step){
+		case 0:
+					*(uint16_t*)data = Encoder.raw;
+
+		OD_write_2(0x2070, data);
+//							*(uint16_t*)data = EX_ENCODER_VALUE;
+
+//		OD_write_2(0x2071, data);
+			init_multi = true;
+			step = 4;
+			input_data.time_current = 0;
+		break;
+		case 1:
+			input_data.time_current += 0.0005;
+			MotorControl.pos_set = pos;
+			MotorControl.velocity_set = vel;
+			MotorControl.Kp = 100;
+
+			MotorControl.Kd = 1;
+			if(input_data.time_current > 21.0){
+							step = 0;
+
+			}
+			if(input_data.time_current > 20.0){
+				MotorControl.Kp = 0;
+
+				MotorControl.Kd = 0;
+
+			}
+			/// turn 360
+//		Q_OFFSET = 6.2832;
+		
+		break;
+		case 2:
+			input_data.time_current += 0.0005;
+			setpoint = SmoothTransition_Struct(&input_data);
+			MotorControl.pos_set = setpoint.position;
+			MotorControl.velocity_set = setpoint.velocity;
+			MotorControl.Kp = 100;
+
+			MotorControl.Kd = 1;
+			if(input_data.time_current >= input_data.time_total){
+				input_data.time_current = 0.000;
+				step = 5;
+				input_data.q_start = raw_rad_data;
+				input_data.q_offset = 4*M_PI;
+				input_data.time_total = 3;
+
+				break;
+			}
+			/// turn -360
+			break;
+		case 3:
+			/// IDLE
+			MotorControl.Kp = 0;
+		input_data.time_current = 0.000;
+
+			MotorControl.Kd = 0;
+		step = 0;
+		break;
+		case 4:
+						/// motor zero 
+			input_data.time_current += 0.0005;
+//			MotorControl.pos_set = pos;
+//			MotorControl.velocity_set = vel;
+//			MotorControl.Kp = 100;
+
+//			MotorControl.Kd = 1;
+//			if(input_data.time_current > 10.0){
+//							step = 0;
+
+//			}
+		if(input_data.time_current > 2.0){
+			input_data.q_start = raw_rad_data;
+			input_data.q_offset = 2*M_PI;
+			input_data.time_current = 0.000;
+			input_data.time_total = 2.5;
+			step = 1;
+		}
+		break;
+		case 5:
+			input_data.time_current += 0.0005;
+			setpoint = SmoothTransition_Struct(&input_data);
+			MotorControl.pos_set = setpoint.position;
+			MotorControl.velocity_set = setpoint.velocity;
+			MotorControl.Kp = 100;
+
+			MotorControl.Kd = 1;
+			if(input_data.time_current >= input_data.time_total){
+				input_data.time_current = 0.000;
+				step = 3;
+				input_data.q_start = raw_rad_data;
+				input_data.q_offset = -2*M_PI;
+				input_data.time_total = 3;
+
+				break;
+			}
+			/// turn -360
+			break;
+		default: 
+			break;
+	}
+
+	
 }

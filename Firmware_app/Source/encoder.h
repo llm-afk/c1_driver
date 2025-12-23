@@ -70,6 +70,7 @@ void ENCODER_calib_end(void);
 void ENCODER_calib_loop(float dt);
 float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time_us);
 
+bool check_ex_encoder(void);
 int32_t ENCODER_EX_read(void);
 int32_t ENCODER_EX_read_rectified(void);
 int32_t ENCODER_read(void);

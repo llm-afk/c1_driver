@@ -415,7 +415,7 @@ int main(void)
     }
     
     fwdgt_enable();
-    COM_CAN_report_bootup();
+//    COM_CAN_report_bootup();
     MotorControl.is_bootup = true;
     mNodeID = ODObjs.node_id;
 
@@ -451,6 +451,7 @@ void delay_ms(const uint16_t ms)
     }
 }
 extern uint8_t flag_zero[2];
+bool no_reset = false;
 static void LED_act_loop(void)
 {
     static uint16_t tick = 0;
@@ -517,7 +518,7 @@ static void LED_act_loop(void)
 			__set_FAULTMASK(1);							
 			NVIC_SystemReset(); 
 		}
-		if(flag_zero[0] == 1 && flag_zero[1] == 1){
+		if(flag_zero[0] == 1 && flag_zero[1] == 1 && !no_reset){
 			wait_reset = true;
 		}
     tick ++;
