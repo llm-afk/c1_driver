@@ -377,9 +377,10 @@ static void WATCH_DOG_init(void)
 
 static void LED_act_loop(void);
 static uint8_t mNodeID;
-
+int calibration_offset_ret = 0;
 int main(void)
 {
+	
     __disable_irq();
     
     RCU_init();
@@ -398,27 +399,38 @@ int main(void)
     SOC_init();
     OD_init();
     MC_init();
-    COM_CAN_init();
+//    COM_CAN_init();
     ENCODER_init();
     
     // wait encoder sensor power up
     delay_ms(500);
     
     __enable_irq();
-    
-    if(SOC_calibration_offset() != 0){
-        COM_CAN_report_err(ERR_ADC_SELFTEST);
-    }
-    
-    if(!Encoder.Config.calib_valid){
-        COM_CAN_report_err(ERR_ENC_CALIB);
-    }
+    calibration_offset_ret = SOC_calibration_offset();
+//    if(SOC_calibration_offset() != 0){
+////        COM_CAN_report_err(ERR_ADC_SELFTEST);
+//    }
+//    
+//    if(!Encoder.Config.calib_valid){
+////        COM_CAN_report_err(ERR_ENC_CALIB);
+//    }
     
     fwdgt_enable();
 //    COM_CAN_report_bootup();
     MotorControl.is_bootup = true;
     mNodeID = ODObjs.node_id;
-
+		delay_ms(2);
+    COM_CAN_init();
+		
+		if(calibration_offset_ret){
+        COM_CAN_report_err(ERR_ADC_SELFTEST);
+    }
+    if(!Encoder.Config.calib_valid){
+        COM_CAN_report_err(ERR_ENC_CALIB);
+    }
+    
+//    can_interrupt_enable(CAN0, CAN_INTEN_RFNEIE0);
+//    nvic_irq_enable(CAN0_RX0_IRQn, 0, 0);
     static uint32_t tick = 0;
     while(1){
         LED_act_loop();
