@@ -409,7 +409,7 @@ int main(void)
     calibration_offset_ret = SOC_calibration_offset();
 //    if(SOC_calibration_offset() != 0){
 ////        COM_CAN_report_err(ERR_ADC_SELFTEST);
-//    }
+//    }`
 //    
 //    if(!Encoder.Config.calib_valid){
 ////        COM_CAN_report_err(ERR_ENC_CALIB);
