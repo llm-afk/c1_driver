@@ -254,14 +254,15 @@ static void parse_frame(CanFrame *frame)
 					
 					
 //						if( MC_get_state() == MCS_OPERATION){
+					if(!multi_check_flag){
 							MotorControl.pos_set = *(float*)&frame->data[0];
 							MotorControl.velocity_set = *(float*)&frame->data[4];
 							MotorControl.current_mit = *(float*)&frame->data[8];
 							MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
 							MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
 //						}
-
-
+					}
+			
 //							MotorControl.velocity_set = input_data.time_current;
 //							MotorControl.current_mit = *(float*)&frame->data[8];
 

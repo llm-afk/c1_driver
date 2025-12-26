@@ -449,7 +449,6 @@ int32_t ENCODER_read(void)
     return (sample_data >> 2);
 }
 float raw_rad_data = 0.0f;
-	int32_t Multi_Turns;
 	int init_in;
 	uint16_t init_ex;
 	uint16_t init_in_offset;
@@ -572,10 +571,10 @@ int32_t Get_Multi_Turns(){
 	static bool init_multi = true;
 	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
 	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
-		Mech_Differ -= 1000;
+		Mech_Differ -= 800;
 	}
 	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) <= 10000){
-		Mech_Differ += 1000;
+		Mech_Differ += 800;
 	}					
 
 	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
@@ -588,25 +587,83 @@ int32_t Get_Multi_Turns(){
 		init_ex = encoder_two;
 		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
 	}
-	return Multi_Turns;
+	return multi_test;
 }
 int32_t multi_turn_check_111 = 0;
 bool init_multi = true;
 
+//void multi_encoder(void){
+//	static	int16_t Multi_Turns;
+
+//	static uint16_t Mech_Angle_Old;
+//	static float Real_Angle_Old;
+//	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
+//	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
+//	int encoder_one = Encoder.raw;
+//	uint16_t Mech_Angle = encoder_one;
+//	
+
+//	
+//	if(init_multi){
+//		Multi_Turns = Get_Multi_Turns();
+//	}
+//	init_multi = false;
+//	// if(init_multi){
+//		//  Encoder.shadow_count += Multi_Turns*ENCODER_RESOLUTION;
+//		// Encoder.shadow_count -= Mech_Angle_Err;
+//	// 					}
+//	// 					multi_debug = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
+//	// //					Multi_Turns = Multi_Turns % 12;
+
+//	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
+//	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
+//	multi_turn_check_111 = Multi_Turns;
+//	Mech_Angle_Old = Mech_Angle;
+//	float Real_Angle = ((float)((int)Multi_Turns) * M_2PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
+//	Real_Velocity = (Real_Angle - Real_Angle_Old) / ENCODER_PLL_DT;
+//	Real_Angle_Old = Real_Angle;
+//	float vel_sum = Real_Velocity;
+//			for (int i = 1; i < vel_average_filter_num; i++)
+//			{
+//				vel_vec[vel_average_filter_num - i] = vel_vec[vel_average_filter_num - i - 1];
+//				vel_sum += vel_vec[vel_average_filter_num - i];
+//			}
+//			vel_vec[0] = Real_Velocity;
+//		float	Real_Velocity_Filtered = vel_sum / (float)vel_average_filter_num;
+//		raw_rad_data = Real_Angle;
+////Velocity_Filtered = Real_Velocity_Filtered;
+
+//}
+
+	int32_t Multi_Turns;
+
 void multi_encoder(void){
-	static	int16_t Multi_Turns;
 
 	static uint16_t Mech_Angle_Old;
 	static float Real_Angle_Old;
 	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
 	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
+	uint16_t encoder_two = ENCODER_EX_read();
 	int encoder_one = Encoder.raw;
 	uint16_t Mech_Angle = encoder_one;
-	
+	static bool init_multi = true;
+	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
+	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
+		Mech_Differ -= 800;
+	}
+	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) <= 10000){
+		Mech_Differ += 800;
+	}					
 
-	
+	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
+	multi_test = Multi_Turns_1;
 	if(init_multi){
-		Multi_Turns = Get_Multi_Turns();
+		init_in_offset = IN_ENCODER_OFFSET;
+		init_ex_offset = EX_ENCODER_OFFSET;
+		init_in = Encoder.raw;
+		init_ex = encoder_two;
+		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
+		Mech_Angle_Old = encoder_one;
 	}
 	init_multi = false;
 	// if(init_multi){
@@ -618,13 +675,13 @@ void multi_encoder(void){
 
 	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
 	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
-	multi_turn_check_111 = Multi_Turns;
 	Mech_Angle_Old = Mech_Angle;
+	multi_turn_check_111 = Multi_Turns;
 	float Real_Angle = ((float)((int)Multi_Turns) * M_2PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
 	Real_Velocity = (Real_Angle - Real_Angle_Old) / ENCODER_PLL_DT;
 	Real_Angle_Old = Real_Angle;
 	float vel_sum = Real_Velocity;
-			for (int i = 1; i < vel_average_filter_num; i++)
+			for (int i = 0; i < vel_average_filter_num; i++)
 			{
 				vel_vec[vel_average_filter_num - i] = vel_vec[vel_average_filter_num - i - 1];
 				vel_sum += vel_vec[vel_average_filter_num - i];
@@ -645,7 +702,8 @@ int encoder_count = 0;
 
 
 
-
+int32_t in_encoder_turns = 0;
+int32_t ex_encoder_turns = 0;
 void ENCODER_loop(void)
 {
 	encoder_count ++;
@@ -705,7 +763,8 @@ void ENCODER_loop(void)
         return;
     }
 		multi_encoder();
-
+ex_encoder_turns = Get_Multi_Turns();
+in_encoder_turns = multi_turn_check_111;
     /* Delta count */
     int delta_count = Encoder.count_in_cpr - Encoder.count_in_cpr_prev;
     Encoder.count_in_cpr_prev = Encoder.count_in_cpr;
@@ -844,8 +903,8 @@ TrajectorySetpoint setpoint;
 float test_time;
 float test_pos;
 extern bool no_reset;
-int32_t in_encoder_turns = 0;
-int32_t ex_encoder_turns = 0;
+//int32_t in_encoder_turns = 0;
+//int32_t ex_encoder_turns = 0;
 
 bool check_ex_encoder(void){
 	static int32_t step = 0;
@@ -884,8 +943,8 @@ bool check_ex_encoder(void){
 //	if(current_time > TOTAL_TIME){
 //		multi_check_flag = 0;
 //	}
-ex_encoder_turns = Get_Multi_Turns();
-in_encoder_turns = multi_turn_check_111;
+//ex_encoder_turns = Get_Multi_Turns();
+//in_encoder_turns = multi_turn_check_111;
 	uint8_t data[8];
 //	return 0;
 no_reset = true;
@@ -909,6 +968,8 @@ if(Get_Multi_Turns() - multi_turn_check_111){
 //							*(uint16_t*)data = EX_ENCODER_VALUE;
 
 //		OD_write_2(0x2071, data);
+				Multi_Turns = 0;
+
 			init_multi = true;
 			step = 4;
 			input_data.time_current = 0;
@@ -918,7 +979,7 @@ if(Get_Multi_Turns() - multi_turn_check_111){
 			MotorControl.pos_set = pos;
 			MotorControl.velocity_set = vel;
 			MotorControl.Kp = 100;
-
+MotorControl.current_mit = 0;
 			MotorControl.Kd = 1;
 			if(input_data.time_current > 21.0){
 							step = 0;

@@ -187,9 +187,9 @@ static void ADC0_init(void)
     /* ADC inserted channel config */
     adc_channel_length_config(ADC0, ADC_INSERTED_CHANNEL, 2);
     // IA - PA0 - ADC01_IN0
-    adc_inserted_channel_config(ADC0, 0, ADC_CHANNEL_0, ADC_SAMPLETIME_7POINT5);
+    adc_inserted_channel_config(ADC0, 0, ADC_CHANNEL_0, ADC_SAMPLETIME_13POINT5);
     // IB - PA1 - ADC01_IN1
-    adc_inserted_channel_config(ADC0, 1, ADC_CHANNEL_1, ADC_SAMPLETIME_7POINT5);
+    adc_inserted_channel_config(ADC0, 1, ADC_CHANNEL_1, ADC_SAMPLETIME_13POINT5);
 
     /* ADC inserted trigger config */
     adc_external_trigger_source_config(ADC0, ADC_INSERTED_CHANNEL, ADC0_1_EXTTRIG_INSERTED_T0_CH3);
@@ -222,7 +222,7 @@ static void ADC1_init(void)
     /* ADC inserted channel config */
     adc_channel_length_config(ADC1, ADC_INSERTED_CHANNEL, 1);
     // IC - PA2 - ADC01_IN2
-    adc_inserted_channel_config(ADC1, 0, ADC_CHANNEL_2, ADC_SAMPLETIME_7POINT5);
+    adc_inserted_channel_config(ADC1, 0, ADC_CHANNEL_2, ADC_SAMPLETIME_13POINT5);
 
     /* ADC inserted trigger config */
     adc_external_trigger_source_config(ADC1, ADC_INSERTED_CHANNEL, ADC0_1_EXTTRIG_INSERTED_NONE);

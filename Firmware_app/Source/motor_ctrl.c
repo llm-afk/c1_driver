@@ -1069,7 +1069,6 @@ float pos_err;
 float vel_err;
 float head_tor;
 extern float raw_rad_data;
-extern int32_t Multi_Turns;
 extern	int init_in;
 extern	uint16_t init_ex;
 extern	uint16_t init_in_offset;
