@@ -414,13 +414,13 @@ int main(void)
 //    if(!Encoder.Config.calib_valid){
 ////        COM_CAN_report_err(ERR_ENC_CALIB);
 //    }
-    
+			COM_CAN_init();
+
     fwdgt_enable();
 //    COM_CAN_report_bootup();
     MotorControl.is_bootup = true;
     mNodeID = ODObjs.node_id;
-		delay_ms(2);
-    COM_CAN_init();
+//		delay_ms(2);
 		
 		if(calibration_offset_ret){
         COM_CAN_report_err(ERR_ADC_SELFTEST);

@@ -561,32 +561,32 @@ float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time
 int16_t multi_test = 0;
 
 int32_t Get_Multi_Turns(){
-	int16_t Multi_Turns;
+//	int16_t Multi_Turns;
 
-	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
-	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
-	uint16_t encoder_two = ENCODER_EX_read();
-	int encoder_one = Encoder.raw;
-	uint16_t Mech_Angle = encoder_one;
-	static bool init_multi = true;
-	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
-	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
-		Mech_Differ -= 800;
-	}
-	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) <= 10000){
-		Mech_Differ += 800;
-	}					
+//	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
+//	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
+//	uint16_t encoder_two = ENCODER_EX_read();
+//	int encoder_one = Encoder.raw;
+//	uint16_t Mech_Angle = encoder_one;
+//	static bool init_multi = true;
+//	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
+//	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
+//		Mech_Differ -= 800;
+//	}
+//	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) <= 10000){
+//		Mech_Differ += 800;
+//	}					
 
-	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
+//	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
 
-	
-	if(1){
-		init_in_offset = IN_ENCODER_OFFSET;
-		init_ex_offset = EX_ENCODER_OFFSET;
-		init_in = Encoder.raw;
-		init_ex = encoder_two;
-		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
-	}
+//	
+//	if(1){
+//		init_in_offset = IN_ENCODER_OFFSET;
+//		init_ex_offset = EX_ENCODER_OFFSET;
+//		init_in = Encoder.raw;
+//		init_ex = encoder_two;
+//		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
+//	}
 	return multi_test;
 }
 int32_t multi_turn_check_111 = 0;
@@ -905,7 +905,6 @@ float test_pos;
 extern bool no_reset;
 //int32_t in_encoder_turns = 0;
 //int32_t ex_encoder_turns = 0;
-
 bool check_ex_encoder(void){
 	static int32_t step = 0;
 	float a =  240*3.14/180.0;
@@ -951,7 +950,16 @@ no_reset = true;
 if(Get_Multi_Turns() - multi_turn_check_111){
 	error_time ++;
 		if(error_time > 10){
-	   COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
+			COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
+			multi_check_flag = 0;
+			MotorControl.pos_set = 0;
+			MotorControl.velocity_set = 0;
+			MotorControl.Kp = 0;
+			MotorControl.current_mit = 0;
+			MotorControl.Kd = 0;
+			input_data.time_current = 0;
+			step = 0;
+			return true;
 
 	}
 }else{
@@ -960,32 +968,31 @@ if(Get_Multi_Turns() - multi_turn_check_111){
 	
 	}
 }
+
+
 	switch(step){
 		case 0:
-					*(uint16_t*)data = Encoder.raw;
+		*(uint16_t*)data = Encoder.raw;
 
 		OD_write_2(0x2070, data);
-//							*(uint16_t*)data = EX_ENCODER_VALUE;
 
-//		OD_write_2(0x2071, data);
-				Multi_Turns = 0;
-
-			init_multi = true;
-			step = 4;
-			input_data.time_current = 0;
+		Multi_Turns = 0;
+		init_multi = true;
+		step = 4;
+		input_data.time_current = 0;
 		break;
 		case 1:
 			input_data.time_current += 0.0005;
 			MotorControl.pos_set = pos;
 			MotorControl.velocity_set = vel;
 			MotorControl.Kp = 100;
-MotorControl.current_mit = 0;
+			MotorControl.current_mit = 0;
 			MotorControl.Kd = 1;
-			if(input_data.time_current > 21.0){
-							step = 0;
+			if(input_data.time_current > 31.0){
+							step = 2;
 
 			}
-			if(input_data.time_current > 20.0){
+			if(input_data.time_current > 30.0){
 				MotorControl.Kp = 0;
 
 				MotorControl.Kd = 0;
@@ -996,22 +1003,32 @@ MotorControl.current_mit = 0;
 		
 		break;
 		case 2:
-			input_data.time_current += 0.0005;
-			setpoint = SmoothTransition_Struct(&input_data);
-			MotorControl.pos_set = setpoint.position;
-			MotorControl.velocity_set = setpoint.velocity;
-			MotorControl.Kp = 100;
+//			input_data.time_current += 0.0005;
+//			setpoint = SmoothTransition_Struct(&input_data);
+//			MotorControl.pos_set = setpoint.position;
+//			MotorControl.velocity_set = setpoint.velocity;
+//			MotorControl.Kp = 100;
 
-			MotorControl.Kd = 1;
-			if(input_data.time_current >= input_data.time_total){
-				input_data.time_current = 0.000;
-				step = 5;
-				input_data.q_start = raw_rad_data;
-				input_data.q_offset = 4*M_PI;
-				input_data.time_total = 3;
+//			MotorControl.Kd = 1;
+//			if(input_data.time_current >= input_data.time_total){
+//				input_data.time_current = 0.000;
+//				step = 5;
+//				input_data.q_start = raw_rad_data;
+//				input_data.q_offset = 4*M_PI;
+//				input_data.time_total = 3;
 
-				break;
-			}
+//				break;
+//			}
+		
+			multi_check_flag = 0;
+			MotorControl.pos_set = 0;
+			MotorControl.velocity_set = 0;
+			MotorControl.Kp = 0;
+			MotorControl.current_mit = 0;
+			MotorControl.Kd = 0;
+			input_data.time_current = 0;
+			step = 0;
+			return true;
 			/// turn -360
 			break;
 		case 3:
