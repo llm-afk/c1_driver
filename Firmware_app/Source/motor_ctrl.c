@@ -1224,42 +1224,94 @@ double torque_to_current_poly5(double torque) {
 static inline void motor_mit_control(void)
 {
 
-//	MotorControl.raw_pos = encoder_position_to_rad(Encoder.shadow_count);
-//		MotorControl.raw_vel = encoder_speed_to_rad_per_sec(Encoder.vel);
-////	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
+// //	MotorControl.raw_pos = encoder_position_to_rad(Encoder.shadow_count);
+// //		MotorControl.raw_vel = encoder_speed_to_rad_per_sec(Encoder.vel);
+// ////	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
 
-//		pos_err = (MotorControl.pos_set - encoder_position_to_rad(Encoder.shadow_count))/1.0;
-//		vel_err = (MotorControl.velocity_set - encoder_speed_to_rad_per_sec(Encoder.vel))/1.0;
-//	
-	MotorControl.raw_pos = raw_rad_data;
-		MotorControl.raw_vel = Velocity_Filtered;
-//	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
-//	t_diff+= 0.001;
-// MotorControl.pos_set = (a * sin(2 * 3.14 * f * t_diff) + c);
-// MotorControl.velocity_set = (2 * 3.14 * f * a * cos(2 * 3.14 * f * t_diff));
-		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
-		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0;
+// //		pos_err = (MotorControl.pos_set - encoder_position_to_rad(Encoder.shadow_count))/1.0;
+// //		vel_err = (MotorControl.velocity_set - encoder_speed_to_rad_per_sec(Encoder.vel))/1.0;
+// //	
+// 	MotorControl.raw_pos = raw_rad_data;
+// 		MotorControl.raw_vel = Velocity_Filtered;
+// //	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
+// //	t_diff+= 0.001;
+// // MotorControl.pos_set = (a * sin(2 * 3.14 * f * t_diff) + c);
+// // MotorControl.velocity_set = (2 * 3.14 * f * a * cos(2 * 3.14 * f * t_diff));
+// 		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
+// 		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0;
 	
-//		  tau_l =
-//      kp * pos_err +
-//        kd * vel_err + MotorControl.current_mit;  // �?前馈力矩
-//		
-	  tau_l =
-      MotorControl.Kp * pos_err +
-        MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
-		tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
-		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
+// //		  tau_l =
+// //      kp * pos_err +
+// //        kd * vel_err + MotorControl.current_mit;  // �?前馈力矩
+// //		
+// 	  tau_l =
+//       MotorControl.Kp * pos_err +
+//         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
+// 		tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
+// 		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
 
-//			MotorControl.current_set = tau_l / GEAR_RATIO;  // 如果不考虑效率
-//			head_tor = MotorControl.current_set;
-//		MotorControl.current_set = torque_to_current(coef5, dcoef5, n5, 24.5);
-//		MotorControl.current_set = s*torque_to_current_5( fabsf(tau_l));
+// //			MotorControl.current_set = tau_l / GEAR_RATIO;  // 如果不考虑效率
+// //			head_tor = MotorControl.current_set;
+// //		MotorControl.current_set = torque_to_current(coef5, dcoef5, n5, 24.5);
+// //		MotorControl.current_set = s*torque_to_current_5( fabsf(tau_l));
 
-		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
+// 		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
 		
-//		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
+// //		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
 
-
+    static uint16_t count = 0;
+    static uint16_t state = 0;
+    switch(state)
+    {
+        case 0: // 停止
+        {
+            count++;
+            if(count >= 2000)
+            {
+                count = 0;
+                state = 1;
+            }
+            MotorControl.current_set = 0;
+            break;
+        }
+        case 1: // 正
+        {
+            count++;
+            if(count >= 600)
+            {
+                count = 0;
+                state = 2;
+            }
+            MotorControl.current_set = 1;
+            break;
+        }
+        case 2: // 停止
+        {
+            count++;
+            if(count >= 2000)
+            {
+                count = 0;
+                state = 3;
+            }
+            MotorControl.current_set = 0;
+            break;
+        }
+        case 3:
+        {
+            count++;
+            if(count >= 600)
+            {
+                count = 0;
+                state = 0;
+            }
+            MotorControl.current_set = -1;
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
 }
 float encoder_raw;
 float encoder_one;

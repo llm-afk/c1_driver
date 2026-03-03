@@ -1,7 +1,7 @@
 .\object\system_gd32c10x.o: ..\CMSIS\GD\GD32C10x\Source\system_gd32c10x.c
 .\object\system_gd32c10x.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\system_gd32c10x.o: ..\CMSIS\core_cm4.h
-.\object\system_gd32c10x.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\system_gd32c10x.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\system_gd32c10x.o: ..\CMSIS\core_cmInstr.h
 .\object\system_gd32c10x.o: ..\CMSIS\core_cmFunc.h
 .\object\system_gd32c10x.o: ..\CMSIS\core_cm4_simd.h

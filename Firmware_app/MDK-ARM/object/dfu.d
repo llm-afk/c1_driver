@@ -3,7 +3,7 @@
 .\object\dfu.o: ..\Source\main.h
 .\object\dfu.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\dfu.o: ..\CMSIS\core_cm4.h
-.\object\dfu.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\dfu.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\dfu.o: ..\CMSIS\core_cmInstr.h
 .\object\dfu.o: ..\CMSIS\core_cmFunc.h
 .\object\dfu.o: ..\CMSIS\core_cm4_simd.h
@@ -32,10 +32,10 @@
 .\object\dfu.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\dfu.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\dfu.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\dfu.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
-.\object\dfu.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\dfu.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\dfu.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\dfu.o: ..\Source\util.h
-.\object\dfu.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\dfu.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\object\dfu.o: ..\Source\Eeprom\Core\eeprom_emul.h
 .\object\dfu.o: ..\Source\Eeprom\Core\eeprom_emul_conf.h
 .\object\dfu.o: ..\Source\Eeprom\Core\eeprom_emul_types.h

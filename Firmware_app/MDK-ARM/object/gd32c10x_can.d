@@ -2,7 +2,7 @@
 .\object\gd32c10x_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_can.h
 .\object\gd32c10x_can.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\gd32c10x_can.o: ..\CMSIS\core_cm4.h
-.\object\gd32c10x_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\gd32c10x_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\gd32c10x_can.o: ..\CMSIS\core_cmInstr.h
 .\object\gd32c10x_can.o: ..\CMSIS\core_cmFunc.h
 .\object\gd32c10x_can.o: ..\CMSIS\core_cm4_simd.h
@@ -31,4 +31,4 @@
 .\object\gd32c10x_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\gd32c10x_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\gd32c10x_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\gd32c10x_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\gd32c10x_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
