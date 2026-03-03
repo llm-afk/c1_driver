@@ -1277,12 +1277,12 @@ static inline void motor_mit_control(void)
         case 1: // 正
         {
             count++;
-            if(count >= 600)
+            if(count >= 200)
             {
                 count = 0;
                 state = 2;
             }
-            MotorControl.current_set = 1;
+            MotorControl.current_set = TORQUE_LIMIT;
             break;
         }
         case 2: // 停止
@@ -1296,15 +1296,15 @@ static inline void motor_mit_control(void)
             MotorControl.current_set = 0;
             break;
         }
-        case 3:
+        case 3: // 反
         {
             count++;
-            if(count >= 600)
+            if(count >= 200)
             {
                 count = 0;
                 state = 0;
             }
-            MotorControl.current_set = -1;
+            MotorControl.current_set = -TORQUE_LIMIT;
             break;
         }
         default:
