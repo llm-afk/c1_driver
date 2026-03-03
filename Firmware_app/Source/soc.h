@@ -22,7 +22,7 @@ static const uint8_t dlc_to_len_table[] = {0,1,2,3,4,5,6,7,8,12,16,20,24,32,48,6
 
 #define SHUNT_RESISTENCE       (0.002f)
 #define V_SCALE                ((float) (31.0f * 3.3f / 4095.0f))
-#define I_SCALE                ((float) ((3.3f / 4095.0f) / SHUNT_RESISTENCE / 15.0f))
+#define I_SCALE                ((float) ((3.3f / 4095.0f) / SHUNT_RESISTENCE / 13.0f))
     
 #define MAX_MODULATION         0.95f
 

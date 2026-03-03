@@ -1247,7 +1247,7 @@ static inline void motor_mit_control(void)
 	  tau_l =
       MotorControl.Kp * pos_err +
         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
-		tau_l = CLAMP(tau_l, -30, +30);
+		tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
 		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
 
 //			MotorControl.current_set = tau_l / GEAR_RATIO;  // 如果不考虑效率

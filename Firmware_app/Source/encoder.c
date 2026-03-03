@@ -655,14 +655,14 @@ void multi_encoder(void){
 		Mech_Differ += 800;
 	}					
 
-	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
+	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 32) / 65536) : floor(((uint32_t)Mech_Differ * 32) / 65536) - 32;
 	multi_test = Multi_Turns_1;
 	if(init_multi){
 		init_in_offset = IN_ENCODER_OFFSET;
 		init_ex_offset = EX_ENCODER_OFFSET;
 		init_in = Encoder.raw;
 		init_ex = encoder_two;
-		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
+		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 32) / 65536) : floor(((uint32_t)Mech_Differ * 32) / 65536) - 32;
 		Mech_Angle_Old = encoder_one;
 	}
 	init_multi = false;
