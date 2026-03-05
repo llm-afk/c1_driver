@@ -4,7 +4,7 @@
 .\object\com_can.o: ..\Source\main.h
 .\object\com_can.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\com_can.o: ..\CMSIS\core_cm4.h
-.\object\com_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\com_can.o: ..\CMSIS\core_cmInstr.h
 .\object\com_can.o: ..\CMSIS\core_cmFunc.h
 .\object\com_can.o: ..\CMSIS\core_cm4_simd.h
@@ -33,16 +33,16 @@
 .\object\com_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\com_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\com_can.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\com_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
-.\object\com_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-.\object\com_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\object\com_can.o: ..\Source\motor_ctrl.h
 .\object\com_can.o: ..\Source\pid.h
 .\object\com_can.o: ..\Source\util.h
 .\object\com_can.o: ..\Source\od.h
 .\object\com_can.o: ..\Source\dfu.h
 .\object\com_can.o: ..\Source\fifo_buffer.h
-.\object\com_can.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 .\object\com_can.o: ..\Source\Eeprom\Core\eeprom_emul.h
 .\object\com_can.o: ..\Source\Eeprom\Core\eeprom_emul_conf.h
 .\object\com_can.o: ..\Source\Eeprom\Core\eeprom_emul_types.h

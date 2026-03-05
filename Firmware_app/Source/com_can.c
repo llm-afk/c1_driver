@@ -23,7 +23,7 @@ static uint32_t mHeartbeatProducerTick = 0;
 
 static void parse_frame(CanFrame *frame);
 static inline void send_to_host_or_enqueue(CanFrame *tx_frame);
-
+float Iq_To_Torque(float iq);
 void COM_CAN_init(void)
 {
 
@@ -289,7 +289,7 @@ static void parse_frame(CanFrame *frame)
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
 						*(float*)&frame->data[0] = MotorControl.raw_pos;
             *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
+						*(float*)&frame->data[8] = Iq_To_Torque(ACTUAL_TORQUE); 
 						if(multi_check_flag){
 							*(float*)&frame->data[0] = MotorControl.raw_pos;
 							*(float*)&frame->data[4] = ex_encoder_turns;
@@ -394,7 +394,7 @@ static void parse_frame(CanFrame *frame)
 
             *(float*)&frame->data[0] = MotorControl.raw_pos;
             *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
+						*(float*)&frame->data[8] = Iq_To_Torque(ACTUAL_TORQUE); 
 							*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
 //						*(float*)&frame->data[0] = encoder_raw;

@@ -5,7 +5,7 @@
 .\object\encoder.o: ..\Source\main.h
 .\object\encoder.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\encoder.o: ..\CMSIS\core_cm4.h
-.\object\encoder.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\encoder.o: ..\CMSIS\core_cmInstr.h
 .\object\encoder.o: ..\CMSIS\core_cmFunc.h
 .\object\encoder.o: ..\CMSIS\core_cm4_simd.h
@@ -34,12 +34,12 @@
 .\object\encoder.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\encoder.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\encoder.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\encoder.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
-.\object\encoder.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-.\object\encoder.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\object\encoder.o: ..\Source\pid.h
 .\object\encoder.o: ..\Source\util.h
 .\object\encoder.o: ..\Source\od.h
-.\object\encoder.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 .\object\encoder.o: ..\Source\Eeprom\Porting\flash_interface.h
 .\object\encoder.o: ..\Source\Eeprom\Core\eeprom_emul_types.h

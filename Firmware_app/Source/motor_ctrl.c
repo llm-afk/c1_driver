@@ -110,6 +110,98 @@ double torque_to_current_5(double T) {
          + 0.0000785584 * T * T * T * T
          - 0.00000119598 * T * T * T * T * T;
 }
+
+/* ========================================================================= *
+ * 电机非线性力矩与电流转换查表 (基于最终实测+平滑推演数据)
+ * 数组长度: 92 (覆盖 0.0A ~ 45.5A)
+ * 步长: 0.5A 
+ * ========================================================================= */
+static const float ESTIMATED_TORQUE_LUT[92] = {
+    0.000f,  0.565f,  1.130f,  1.695f,  2.260f,  2.824f,  3.388f,  3.952f,  4.515f,  5.078f,
+    5.640f,  6.201f,  6.761f,  7.320f,  7.878f,  8.434f,  8.989f,  9.542f, 10.093f, 10.641f,
+   11.187f, 11.730f, 12.270f, 12.806f, 13.338f, 13.866f, 14.389f, 14.908f, 15.421f, 15.928f,
+   16.430f, 16.925f, 17.413f, 17.894f, 18.367f, 18.831f, 19.286f, 19.732f, 20.168f, 20.593f,
+   21.008f, 21.412f, 21.805f, 22.186f, 22.555f, 22.911f, 23.255f, 23.587f, 23.905f, 24.211f,
+   24.504f, 24.783f, 25.049f, 25.302f, 25.542f, 25.769f, 25.983f, 26.185f, 26.375f, 26.554f,
+   26.723f, 26.883f, 27.035f, 27.180f, 27.319f, 27.453f, 27.583f, 27.710f, 27.834f, 27.955f,
+   28.073f, 28.188f, 28.300f, 28.409f, 28.516f, 28.621f, 28.724f, 28.825f, 28.924f, 29.021f,
+   29.116f, 29.210f, 29.303f, 29.395f, 29.486f, 29.576f, 29.665f, 29.753f, 29.840f, 29.926f,
+   30.011f, 30.095f
+};
+
+#define LUT_SIZE       92
+#define MAX_LUT_IQ     45.5f
+#define MAX_LUT_TORQUE 30.095f
+
+// 兜底外推斜率 (基于最后两项: 0.084 / 0.5 = 0.168)
+#define TAIL_SLOPE_TQ_PER_A 0.168f 
+// 反向外推斜率 (1 / 0.168 = 5.952381f)
+#define TAIL_SLOPE_A_PER_TQ 5.952381f 
+
+/**
+ * @brief  正向映射：q轴电流(A) -> 估算实际力矩(Nm)
+ * @note   算法复杂度 O(1)，支持正反转，带有界外线性兜底
+ */
+float Iq_To_Torque(float iq) {
+    // 1. 提符号并取绝对值 (利用三目运算极速化)
+    float sign = (iq < 0.0f) ? -1.0f : 1.0f;
+    float abs_iq = (iq < 0.0f) ? -iq : iq;
+    float abs_torque;
+
+    // 2. 判断是否在查表范围内 (< 的严格判断避免了 index+1 造成数组越界)
+    if (abs_iq < MAX_LUT_IQ) {
+        float f_index = abs_iq * 2.0f;           // 因为步长是0.5, 乘2就是索引
+        uint32_t index = (uint32_t)f_index;      // 硬件向下取整
+        float weight = f_index - (float)index;   // 小数部分即为权重
+        
+        // 极速线性插值
+        abs_torque = ESTIMATED_TORQUE_LUT[index] + weight * (ESTIMATED_TORQUE_LUT[index+1] - ESTIMATED_TORQUE_LUT[index]);
+    } else {
+        // 3. 超出查表上限时的平滑外推兜底
+        abs_torque = MAX_LUT_TORQUE + (abs_iq - MAX_LUT_IQ) * TAIL_SLOPE_TQ_PER_A;
+    }
+
+    return abs_torque * sign;
+}
+
+/**
+ * @brief  反向补偿：目标期望力矩(Nm) -> 需要下发的q轴电流(A)
+ * @note   算法复杂度 O(log N)，支持正反转，包含深度饱和兜底
+ */
+float Torque_To_Iq(float target_torque) {
+    // 1. 提符号并取绝对值
+    float sign = (target_torque < 0.0f) ? -1.0f : 1.0f;
+    float abs_torque = (target_torque < 0.0f) ? -target_torque : target_torque;
+    float abs_iq;
+
+    // 2. 查表范围判定 (同样用 < 严格防止右侧越界)
+    if (abs_torque < MAX_LUT_TORQUE) {
+        int left = 0, right = LUT_SIZE - 1, mid;
+        
+        // 二分查找 (MCU只需最多查7次，远快于多项式算次方)
+        while (left <= right) {
+            mid = (left + right) >> 1;
+            if (ESTIMATED_TORQUE_LUT[mid] < abs_torque) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+        
+        // 此时 right 即为锁定区间的左侧索引
+        int index = right;
+        float torque_diff = ESTIMATED_TORQUE_LUT[index+1] - ESTIMATED_TORQUE_LUT[index];
+        float weight = (abs_torque - ESTIMATED_TORQUE_LUT[index]) / torque_diff;
+        
+        // 索引 * 0.5 步长 + 权重 * 0.5 步长
+        abs_iq = (index + weight) * 0.5f; 
+    } else {
+        // 3. 超过30.095Nm 时的兜底外推计算（比如要求35Nm，会自动推算出巨额电流）
+        abs_iq = MAX_LUT_IQ + (abs_torque - MAX_LUT_TORQUE) * TAIL_SLOPE_A_PER_TQ;
+    }
+
+    return abs_iq * sign;
+}
 void MC_init(void)
 {
     MC_profile_update();
@@ -1255,7 +1347,8 @@ static inline void motor_mit_control(void)
 //		MotorControl.current_set = torque_to_current(coef5, dcoef5, n5, 24.5);
 //		MotorControl.current_set = s*torque_to_current_5( fabsf(tau_l));
 
-		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
+//		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
+        MotorControl.current_set = Torque_To_Iq(tau_l);
 		
 //		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
 
