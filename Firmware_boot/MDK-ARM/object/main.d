@@ -1,7 +1,7 @@
 .\object\main.o: ..\Source\main.c
 .\object\main.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\main.o: ..\CMSIS\core_cm4.h
-.\object\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\main.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\main.o: ..\CMSIS\core_cmInstr.h
 .\object\main.o: ..\CMSIS\core_cmFunc.h
 .\object\main.o: ..\CMSIS\core_cm4_simd.h

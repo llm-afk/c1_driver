@@ -1,4 +1,4 @@
---cpu=Cortex-M4.fp.sp
+--cpu=Cortex-M4.fp
 ".\object\main.o"
 ".\object\gd32c10x_it.o"
 ".\object\gd32c10x_dma.o"
