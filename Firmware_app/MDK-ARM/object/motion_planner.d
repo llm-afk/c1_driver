@@ -1,9 +1,9 @@
 .\object\motion_planner.o: ..\Source\motion_planner.c
 .\object\motion_planner.o: ..\Source\motion_planner.h
-.\object\motion_planner.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-.\object\motion_planner.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\motion_planner.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\motion_planner.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\motion_planner.o: ..\Source\util.h
-.\object\motion_planner.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\motion_planner.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\object\motion_planner.o: ..\Source\motor_ctrl.h
 .\object\motion_planner.o: ..\Source\soc.h
 .\object\motion_planner.o: ..\Source\main.h
@@ -37,6 +37,6 @@
 .\object\motion_planner.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\motion_planner.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\motion_planner.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\motion_planner.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\motion_planner.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\motion_planner.o: ..\Source\pid.h
 .\object\motion_planner.o: ..\Source\od.h

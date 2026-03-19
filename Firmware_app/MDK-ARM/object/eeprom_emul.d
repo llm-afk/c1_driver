@@ -4,7 +4,7 @@
 .\object\eeprom_emul.o: ..\Source\main.h
 .\object\eeprom_emul.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\eeprom_emul.o: ..\CMSIS\core_cm4.h
-.\object\eeprom_emul.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\eeprom_emul.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\eeprom_emul.o: ..\CMSIS\core_cmInstr.h
 .\object\eeprom_emul.o: ..\CMSIS\core_cmFunc.h
 .\object\eeprom_emul.o: ..\CMSIS\core_cm4_simd.h
@@ -33,9 +33,9 @@
 .\object\eeprom_emul.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\eeprom_emul.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\eeprom_emul.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\eeprom_emul.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
-.\object\eeprom_emul.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\eeprom_emul.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\eeprom_emul.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\eeprom_emul.o: ..\Source\Eeprom\Core\eeprom_emul_types.h
 .\object\eeprom_emul.o: ..\Source\Eeprom\Porting\flash_interface.h
 .\object\eeprom_emul.o: ..\Source\util.h
-.\object\eeprom_emul.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\eeprom_emul.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h

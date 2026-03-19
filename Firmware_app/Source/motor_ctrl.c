@@ -727,18 +727,6 @@ static void servo_loop(void)
         COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
     }
 
-//    // Over voltage check
-//    if(DC_LINK_VOLTAGE > OVER_VOLTAGE_LEVEL){
-//        COM_CAN_report_err(ERR_OVER_VOLTAGE);
-//    }
-
-    // Under voltage check
-//    if(DC_LINK_VOLTAGE < UNDER_VOLTAGE_LEVEL){
-//        COM_CAN_report_err(ERR_UNDER_VOLTAGE);
-//    }
-    // Protect check ========================================================
-//				        MC_set_state(MCS_OPERATION);
-//								multi_check_flag = 1;
     switch(mFSM.state){
         case MCS_OPERATION:
 
@@ -1307,34 +1295,12 @@ void MC_high_priority_task(void)
     // 2KHz
     if(tick == 0){
 				EX_ENCODER_VALUE = ENCODER_EX_read();
-//count_tor_test ++;
-//				encoder_raw = Encoder.shadow_count;
-//				encoder_one = Encoder.raw;
-//				encoder_two = EX_ENCODER_VALUE;
-//			if(count_tor_test %2 == 0){
 			if(multi_check_flag){
 				check_ex_encoder();
 			}
 				motor_mit_control();
 
         servo_loop();
-//			}
-
-
-    }
-
-    // 2KHz
-    if(tick == 1){
-//        if(MotorControl.enabled_loop & ENABLED_LOOP_POSITION){
-//            position_ctrl_loop();
-//        }
-    }
-
-    // 4KHz
-    if(tick == 2 || tick == 7){
-//        if(MotorControl.enabled_loop & ENABLED_LOOP_VELOCITY){
-//            velocity_ctrl_loop();
-//        }
     }
 
     // 20KHz

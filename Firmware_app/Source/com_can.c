@@ -237,23 +237,6 @@ static void parse_frame(CanFrame *frame)
 					 if(GET_NODE_ID(frame->id) != mNodeID) break;
 								mHeartbeatConsumerTick = get_tick();
 
-							
-//							if(ERROR_CODE){
-//								frame->id = MSG_ID_EMERGENCY + mNodeID;
-//								frame->id = 8;
-//								for(int i=0; i<8; i++){
-//									frame->data[i] = 0;
-//								}
-//								*(uint16_t*)&frame->data[0] = ERROR_CODE;
-//								send_to_host_or_enqueue(frame);
-//								break;
-//							}
-//            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
-//            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
-					
-					
-//						if( MC_get_state() == MCS_OPERATION){
 					if(!multi_check_flag){
 							MotorControl.pos_set = *(float*)&frame->data[0];
 							MotorControl.velocity_set = *(float*)&frame->data[4];
@@ -262,16 +245,6 @@ static void parse_frame(CanFrame *frame)
 							MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
 //						}
 					}
-			
-//							MotorControl.velocity_set = input_data.time_current;
-//							MotorControl.current_mit = *(float*)&frame->data[8];
-
-//						MotorControl.pos_set = *(float*)&frame->data[0];
-//						MotorControl.velocity_set = *(float*)&frame->data[4];
-//						MotorControl.current_mit = *(float*)&frame->data[8];
-//						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
-//						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 0.1f);
 
             // tx msg
             frame->id = MSG_ID_TPDO_5 + mNodeID;
@@ -281,10 +254,6 @@ static void parse_frame(CanFrame *frame)
 							*(uint16_t*)&frame->data[16] = ERROR_CODE;
 
 						}
-//            *(float*)&frame->data[0] = MotorControl.position_cmd;
-//            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
-//						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
-//				
 						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
 						*(float*)&frame->data[0] = MotorControl.raw_pos;
@@ -298,9 +267,6 @@ static void parse_frame(CanFrame *frame)
 
 						*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
-//						*(float*)&frame->data[0] = encoder_raw;
-//            *(float*)&frame->data[4] = encoder_one;
-//						*(float*)&frame->data[8] = encoder_two;
             send_to_host_or_enqueue(frame);
             break;
 				}
@@ -308,23 +274,6 @@ static void parse_frame(CanFrame *frame)
 		case MSG_ID_RPDO_3:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
 								mHeartbeatConsumerTick = get_tick();
-//							if(1){
-//								uint8_t cs = mode_data[0];
-//                uint16_t idx = *(uint16_t*)&mode_data[1];
-//                uint8_t *data = &mode_data[4];
-
-//                frame->data[0] = CS_ERR;
-
-//                if(cs == CS_R){
-//                    OD_read(idx, mode_data);
-//                }else if(cs == CS_W_1){
-//                    OD_write_1(idx, mode_data);
-//                }else if(cs == CS_W_2){
-//                    OD_write_2(idx, mode_data);
-//                }else if(cs == CS_W_4){
-//                    OD_write_4(idx, mode_data);
-//                }
-//							}
 		if( MC_get_state() != MCS_OPERATION){
 							uint16_t idx = 0x2003;
 							uint8_t data = 3;
@@ -334,50 +283,12 @@ static void parse_frame(CanFrame *frame)
 							OD_write_2(idx, enable_data);
 							count_1 ++;
 						}
-//							
-//							if(1){
-//								uint8_t cs = enable_data[0];
-//                uint16_t idx = *(uint16_t*)&enable_data[1];
-//                uint8_t *data = &enable_data[4];
-
-//                frame->data[0] = CS_ERR;
-
-//                if(cs == CS_R){
-//                    OD_read(idx, enable_data);
-//                }else if(cs == CS_W_1){
-//                    OD_write_1(idx, enable_data);
-//                }else if(cs == CS_W_2){
-//                    OD_write_2(idx, enable_data);
-//                }else if(cs == CS_W_4){
-//                    OD_write_4(idx, enable_data);
-//                }
-//							}
-							
-//							OPERATION_MODE = 1;
-							
-//							if(ERROR_CODE){
-//								frame->id = MSG_ID_EMERGENCY + mNodeID;
-//								frame->id = 8;
-//								for(int i=0; i<8; i++){
-//									frame->data[i] = 0;
-//								}
-//								*(uint16_t*)&frame->data[0] = ERROR_CODE;
-//								send_to_host_or_enqueue(frame);
-//								break;
-//							}
-//            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
-//            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
-				
-				
 						MotorControl.pos_set = *(float*)&frame->data[0];
 						MotorControl.velocity_set = *(float*)&frame->data[4];
 						MotorControl.current_mit = *(float*)&frame->data[8];
 						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
 						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 0.1f);
 
-            // tx msg
             frame->id = MSG_ID_TPDO_5 + mNodeID;
 						frame->dlc = 16;
 						if(ERROR_CODE){
@@ -385,10 +296,6 @@ static void parse_frame(CanFrame *frame)
 							*(uint16_t*)&frame->data[16] = ERROR_CODE;
 
 						}
-//            *(float*)&frame->data[0] = MotorControl.position_cmd;
-//            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
-//						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
-////				
 						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
 
@@ -397,9 +304,6 @@ static void parse_frame(CanFrame *frame)
 						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
 							*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
-//						*(float*)&frame->data[0] = encoder_raw;
-//            *(float*)&frame->data[4] = encoder_one;
-//						*(float*)&frame->data[8] = encoder_two;
             send_to_host_or_enqueue(frame);
             break;						
         case MSG_ID_DFU:
