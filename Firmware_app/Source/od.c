@@ -118,7 +118,7 @@ static void dictionary_init(void)
     ODObjs.heartbeat_producer_time = 0;
     ODObjs.heartbeat_consumer_time = 0;
     
-    ODObjs.motor_pp = 8;
+    ODObjs.motor_pp = 10;
     ODObjs.motor_r = 0.5629f;
     ODObjs.motor_l_d = 431e-6f;
     ODObjs.motor_l_q = 431e-6f;
