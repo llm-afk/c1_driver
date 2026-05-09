@@ -131,8 +131,8 @@ typedef enum {
 #define MOTOR_RATED_TORQUE         (MOTOR_RATED_CURRENT * MOTOR_TORQUE_CONSTANT)
 
 //#define MOTOR_BACK_EMF_CONSTANT     11.0f     // [Vpk_LL/krpm]
-//#define MOTOR_FLUX_LINKAGE          (ONE_BY_SQRT3 * MOTOR_BACK_EMF_CONSTANT * 60.0f / (1000.0f * MOTOR_POLE_PAIRS * M_2PI))     // [Wb]     ¦Ëpm = (1/¡Ì3)(Ke/(1000P))*(60/2¦Ð)
-//#define MOTOR_TORQUE_CONSTANT       (1.5f * MOTOR_POLE_PAIRS * MOTOR_FLUX_LINKAGE)                                              // [Nm/A]   ¦Ëpm = (2/3)*(Kt/P)
+//#define MOTOR_FLUX_LINKAGE          (ONE_BY_SQRT3 * MOTOR_BACK_EMF_CONSTANT * 60.0f / (1000.0f * MOTOR_POLE_PAIRS * M_2PI))     // [Wb]     ï¿½ï¿½pm = (1/ï¿½ï¿½3)(Ke/(1000P))*(60/2ï¿½ï¿½)
+//#define MOTOR_TORQUE_CONSTANT       (1.5f * MOTOR_POLE_PAIRS * MOTOR_FLUX_LINKAGE)                                              // [Nm/A]   ï¿½ï¿½pm = (2/3)*(Kt/P)
 
 //#define CURRENT_CTRL_BW_HZ          800
 #define CURRENT_CTRL_BW_HZ          350
@@ -148,7 +148,7 @@ typedef enum {
 #define POSITION_CTRL_PERIOD        (1.0f / POSITION_CTRL_FREQUENCY)
 #define SERVO_CTRL_FREQUENCY        (CURRENT_MEASURE_HZ / 10)
 #define SERVO_CTRL_PERIOD           (1.0f / SERVO_CTRL_FREQUENCY)
-#define GEAR_RATIO                  25.0f
+#define GEAR_RATIO                  (ODObjs.node_id == 4 ? 5.0f : 25.0f)
 
 // Control loop define
 #define ENABLED_LOOP_NONE	        0
