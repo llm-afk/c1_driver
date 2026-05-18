@@ -4,7 +4,7 @@
 .\object\motor_ctrl.o: ..\Source\main.h
 .\object\motor_ctrl.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\motor_ctrl.o: ..\CMSIS\core_cm4.h
-.\object\motor_ctrl.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\motor_ctrl.o: ..\CMSIS\core_cmInstr.h
 .\object\motor_ctrl.o: ..\CMSIS\core_cmFunc.h
 .\object\motor_ctrl.o: ..\CMSIS\core_cm4_simd.h
@@ -33,9 +33,9 @@
 .\object\motor_ctrl.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\motor_ctrl.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\motor_ctrl.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\motor_ctrl.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
-.\object\motor_ctrl.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-.\object\motor_ctrl.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\object\motor_ctrl.o: ..\Source\pid.h
 .\object\motor_ctrl.o: ..\Source\util.h
 .\object\motor_ctrl.o: ..\Source\od.h

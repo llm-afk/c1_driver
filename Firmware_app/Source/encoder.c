@@ -637,60 +637,40 @@ bool init_multi = true;
 
 	int32_t Multi_Turns;
 
-void multi_encoder(void){
+void multi_encoder(void)
+{
+    // 计算上电零点偏移
+    static uint16_t init = 0;
+    static float pos_fast_offset = 0.0f; // 转子上电瞬间相对零点的偏移(rad)
+    const int pri_gear = 17; // 主编码器齿轮数
+    const int sec_gear = 18; // 从编码器齿轮数
+    if(init == 0)
+    {
+        init = 1;
+        int16_t enc_err_config = (IN_ENCODER_OFFSET - EX_ENCODER_OFFSET) << 2;
+        int16_t enc_err_mes = (Encoder.raw - ENCODER_EX_read()) << 2;
+        int16_t enc_err = enc_err_mes - enc_err_config; 
+        
+        pos_fast_offset = enc_err / ((((float)sec_gear - (float)pri_gear) / (float)sec_gear) * 65536.0f) * M_2PI; // 计算出转子上电瞬间相对零点的偏移
+    }
 
-	static uint16_t Mech_Angle_Old;
-	static float Real_Angle_Old;
-	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
-	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
-	uint16_t encoder_two = ENCODER_EX_read();
-	int encoder_one = Encoder.raw;
-	uint16_t Mech_Angle = encoder_one;
-	static bool init_multi = true;
-	uint16_t  Mech_Differ = -(65535 - (((encoder_one << 2) - (Mech_Angle_Err << 2)) -  ((encoder_two << 2) - (Mech_Angle_Side_Err << 2))));
-	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) >= 55535){
-		Mech_Differ -= 800;
-	}
-	if((uint16_t)((encoder_one << 2) - (Mech_Angle_Err << 2)) <= 10000){
-		Mech_Differ += 800;
-	}					
-
-	int16_t Multi_Turns_1 = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
-	multi_test = Multi_Turns_1;
-	if(init_multi){
-		init_in_offset = IN_ENCODER_OFFSET;
-		init_ex_offset = EX_ENCODER_OFFSET;
-		init_in = Encoder.raw;
-		init_ex = encoder_two;
-		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
-		Mech_Angle_Old = encoder_one;
-	}
-	init_multi = false;
-	// if(init_multi){
-		//  Encoder.shadow_count += Multi_Turns*ENCODER_RESOLUTION;
-		// Encoder.shadow_count -= Mech_Angle_Err;
-	// 					}
-	// 					multi_debug = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
-	// //					Multi_Turns = Multi_Turns % 12;
-
-	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
-	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
-	Mech_Angle_Old = Mech_Angle;
-	multi_turn_check_111 = Multi_Turns;
-	float Real_Angle = ((float)((int)Multi_Turns) * M_2PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
-	Real_Velocity = (Real_Angle - Real_Angle_Old) / ENCODER_PLL_DT;
-	Real_Angle_Old = Real_Angle;
-	float vel_sum = Real_Velocity;
-			for (int i = 0; i < vel_average_filter_num; i++)
-			{
-				vel_vec[vel_average_filter_num - i] = vel_vec[vel_average_filter_num - i - 1];
-				vel_sum += vel_vec[vel_average_filter_num - i];
-			}
-			vel_vec[0] = Real_Velocity;
-		float	Real_Velocity_Filtered = vel_sum / (float)vel_average_filter_num;
-		raw_rad_data = Real_Angle;
-//Velocity_Filtered = Real_Velocity_Filtered;
-
+    // 计算角度增量
+    static int16_t enc_degree_last = 0;
+    int16_t enc_degree_delta = 0;
+    static int64_t enc_degree_fast_sum = 0;
+    static uint16_t flag = 0;
+    if(flag == 0)
+    {
+        enc_degree_last = Encoder.count_in_cpr;
+        flag = 1;
+    }
+    enc_degree_delta = Encoder.count_in_cpr - enc_degree_last;
+    if(enc_degree_delta > ENCODER_CPR_DIV) enc_degree_delta -= ENCODER_CPR;
+    else if(enc_degree_delta < -ENCODER_CPR_DIV) enc_degree_delta += ENCODER_CPR;
+    enc_degree_fast_sum += enc_degree_delta;
+    enc_degree_last = Encoder.count_in_cpr;
+    
+    raw_rad_data = (pos_fast_offset + (enc_degree_fast_sum / (float)ENCODER_CPR * M_2PI)) / GEAR_RATIO; 
 }
 
 

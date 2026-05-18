@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #define VERSION_MAJOR       1U
-#define VERSION_MINOR       32U
+#define VERSION_MINOR       33U
 
 #define ATTR_R      0x01
 #define ATTR_W      0x02

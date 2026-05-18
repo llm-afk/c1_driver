@@ -1,8 +1,8 @@
 .\object\od.o: ..\Source\od.c
 .\object\od.o: ..\Source\od.h
-.\object\od.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
-.\object\od.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-.\object\od.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\od.o: ..\Source\util.h
 .\object\od.o: ..\Source\encoder.h
 .\object\od.o: ..\Source\motor_ctrl.h
@@ -38,7 +38,7 @@
 .\object\od.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_timer.h
 .\object\od.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\od.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
-.\object\od.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\od.o: ..\Source\pid.h
 .\object\od.o: ..\Source\Eeprom\Core\eeprom_emul.h
 .\object\od.o: ..\Source\Eeprom\Core\eeprom_emul_conf.h
