@@ -2,7 +2,7 @@
 .\object\gd32c10x_fwdgt.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_fwdgt.h
 .\object\gd32c10x_fwdgt.o: ..\CMSIS\GD\GD32C10x\Include\gd32c10x.h
 .\object\gd32c10x_fwdgt.o: ..\CMSIS\core_cm4.h
-.\object\gd32c10x_fwdgt.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\object\gd32c10x_fwdgt.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\gd32c10x_fwdgt.o: ..\CMSIS\core_cmInstr.h
 .\object\gd32c10x_fwdgt.o: ..\CMSIS\core_cmFunc.h
 .\object\gd32c10x_fwdgt.o: ..\CMSIS\core_cm4_simd.h

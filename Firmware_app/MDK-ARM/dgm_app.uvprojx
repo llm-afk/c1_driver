@@ -81,9 +81,9 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>1</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name>"$K\ARM\ARMCC\bin\fromelf.exe" --bincombined "!L" --output="$L\@L.bin"</UserProg1Name>
-            <UserProg2Name></UserProg2Name>
+            <UserProg2Name>.\BIN_PACKER_PROJECT\src\bin_packer.exe -i ".\object\dgm_app_fw.bin" -o ".\object\dgm_app_released_fw.bin" -s 45KB -vf "..\Source\version.h"</UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
             <nStopA1X>0</nStopA1X>
@@ -274,7 +274,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x20000</Size>
+                <Size>0xb400</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -440,6 +440,11 @@
               <FileName>fifo_buffer.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Source\fifo_buffer.c</FilePath>
+            </File>
+            <File>
+              <FileName>version.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Source\version.h</FilePath>
             </File>
           </Files>
         </Group>

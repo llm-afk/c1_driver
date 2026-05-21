@@ -10,13 +10,13 @@
       <TargetName>dgm_boot</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
+      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>GD32C103CB</Device>
           <Vendor>GigaDevice</Vendor>
-          <PackID>GigaDevice.GD32C10x_DFP.1.4.0</PackID>
+          <PackID>GigaDevice.GD32C10x_DFP.1.0.1</PackID>
           <PackURL>https://gd32mcu.com/data/documents/pack/</PackURL>
           <Cpu>IRAM(0x20000000,0x08000) IROM(0x08000000,0x020000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
@@ -81,9 +81,9 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>1</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name>"$K\ARM\ARMCC\bin\fromelf.exe" --bincombined "!L" --output="$L\@L.bin"</UserProg1Name>
-            <UserProg2Name></UserProg2Name>
+            <UserProg2Name>..\..\Firmware_app\MDK-ARM\BIN_PACKER_PROJECT\src\bin_packer.exe -i ".\object\dgm_boot.bin" -o ".\object\dgm_boot_released_fw.bin" -s 25KB -vf "..\..\Firmware_app\Source\version.h"</UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
             <nStopA1X>0</nStopA1X>
@@ -184,8 +184,6 @@
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
             <RvdsVP>2</RvdsVP>
-            <RvdsMve>0</RvdsMve>
-            <RvdsCdeCp>0</RvdsCdeCp>
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -275,8 +273,8 @@
               </OCR_RVCT3>
               <OCR_RVCT4>
                 <Type>1</Type>
-                <StartAddress>0x8014000</StartAddress>
-                <Size>0x5000</Size>
+                <StartAddress>0x8016800</StartAddress>
+                <Size>0x6400</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -352,7 +350,7 @@
             <NoWarn>0</NoWarn>
             <uSurpInc>0</uSurpInc>
             <useXO>0</useXO>
-            <ClangAsOpt>4</ClangAsOpt>
+            <uClangAs>0</uClangAs>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define></Define>
@@ -392,6 +390,11 @@
               <FileName>gd32c10x_it.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Source\gd32c10x_it.c</FilePath>
+            </File>
+            <File>
+              <FileName>version.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Source\version.h</FilePath>
             </File>
           </Files>
         </Group>

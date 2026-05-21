@@ -3,6 +3,7 @@
 #include "encoder.h"
 #include "eeprom_emul.h"
 #include "com_can.h"
+#include  "version.h"
 
 typedef struct {
     uint16_t index;
@@ -130,7 +131,7 @@ static void dictionary_init(void)
     ODObjs.polarity = 0;
     ODObjs.elec_gear = ENCODER_CPR_F;
     ODObjs.load_inertia = 0.0f;
-    ODObjs.torque_limit = 30.0f;
+    ODObjs.torque_limit = 60.0f;
     ODObjs.over_current_level = 160.0f;
     ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;
@@ -157,7 +158,7 @@ static void dictionary_init(void)
     
     ODObjs.home_offset = 0;
     
-    ODObjs.firmware_version = (uint16_t)((VERSION_MAJOR << 8) | VERSION_MINOR);
+    ODObjs.firmware_version = APP_VERSION;
     ODObjs.restore_default = 0;
     ODObjs.plot_ctrl = 0;
 }

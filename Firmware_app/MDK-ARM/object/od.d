@@ -45,3 +45,4 @@
 .\object\od.o: ..\Source\Eeprom\Core\eeprom_emul_types.h
 .\object\od.o: ..\Source\Eeprom\Porting\flash_interface.h
 .\object\od.o: ..\Source\com_can.h
+.\object\od.o: ..\Source\version.h
