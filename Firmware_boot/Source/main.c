@@ -19,9 +19,9 @@
 /* FLASH MAP ---------------------------------------------*/
 #define PAGE_SIZE       ((uint32_t) 0x400U)                       // 1KB
 #define APP_MAIN_ADDR   ((uint32_t) (0x8000000 + 0 * PAGE_SIZE))  // Page 0
-#define APP_BACK_ADDR   ((uint32_t) (0x8000000 + 40 * PAGE_SIZE)) // Page 40
-#define APP_MAX_SIZE    ((uint32_t) (40 * PAGE_SIZE))             // 50KB
-#define BOOTLOADER_ADDR ((uint32_t) (0x8000000 + 80 * PAGE_SIZE))
+#define APP_BACK_ADDR   ((uint32_t) (0x8000000 + 45 * PAGE_SIZE)) // Page 45
+#define APP_MAX_SIZE    ((uint32_t) (45 * PAGE_SIZE))             // 45KB
+#define BOOTLOADER_ADDR ((uint32_t) (0x8000000 + 90 * PAGE_SIZE))
 
 static inline void watch_dog_feed(void)
 {
@@ -113,7 +113,7 @@ static int write_new_app(void)
 int main(void)
 {
     // Vector Table Relocation in Internal FLASH.
-    SCB->VTOR = BOOTLOADER_ADDR; // 0x8019000
+    SCB->VTOR = BOOTLOADER_ADDR; // 0x8016800
 
     // Up to 5 retries
     for (int i = 0; i < 5; i++) {
