@@ -121,26 +121,48 @@ MISSING_FIRMWARE=0
 
 # SCRIPT_DIR containing flash.sh
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+LOCAL_FIRMWARE_DIR="$SCRIPT_DIR/firmware"
+WIN_FIRMWARE_DIR="$SCRIPT_DIR/../../windows/C2_GD/firmware"
 BOOT_DIR="$SCRIPT_DIR/../../../../Firmware_boot/MDK-ARM/object"
 APP_DIR="$SCRIPT_DIR/../../../../Firmware_app/MDK-ARM/object"
 
 # Check Bootloader
-BOOT_FILES=("$BOOT_DIR"/dgm_boot_released_C2_GD*.bin)
-if [ -f "${BOOT_FILES[0]}" ]; then
-    LOCAL_BOOT="${BOOT_FILES[0]}"
+BOOT_FILES_LOCAL=("$LOCAL_FIRMWARE_DIR"/dgm_boot_released_C2_GD*.bin)
+BOOT_FILES_WIN=("$WIN_FIRMWARE_DIR"/dgm_boot_released_C2_GD*.bin)
+BOOT_FILES_OBJ=("$BOOT_DIR"/dgm_boot_released_C2_GD*.bin)
+
+if [ -f "${BOOT_FILES_LOCAL[0]}" ]; then
+    LOCAL_BOOT="${BOOT_FILES_LOCAL[0]}"
+elif [ -f "${BOOT_FILES_WIN[0]}" ]; then
+    LOCAL_BOOT="${BOOT_FILES_WIN[0]}"
+elif [ -f "${BOOT_FILES_OBJ[0]}" ]; then
+    LOCAL_BOOT="${BOOT_FILES_OBJ[0]}"
+fi
+
+if [ -n "$LOCAL_BOOT" ]; then
     log "找到 Bootloader 固件: $(basename "$LOCAL_BOOT")" "INFO"
 else
-    log "未在 Firmware_boot/MDK-ARM/object 目录下找到以 dgm_boot_released_C2_GD*.bin 命名的固件！" "ERR"
+    log "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_boot_released_C2_GD*.bin 命名的固件！" "ERR"
     MISSING_FIRMWARE=1
 fi
 
 # Check App
-APP_FILES=("$APP_DIR"/dgm_app_released_C2_GD*.bin)
-if [ -f "${APP_FILES[0]}" ]; then
-    LOCAL_APP="${APP_FILES[0]}"
+APP_FILES_LOCAL=("$LOCAL_FIRMWARE_DIR"/dgm_app_released_C2_GD*.bin)
+APP_FILES_WIN=("$WIN_FIRMWARE_DIR"/dgm_app_released_C2_GD*.bin)
+APP_FILES_OBJ=("$APP_DIR"/dgm_app_released_C2_GD*.bin)
+
+if [ -f "${APP_FILES_LOCAL[0]}" ]; then
+    LOCAL_APP="${APP_FILES_LOCAL[0]}"
+elif [ -f "${APP_FILES_WIN[0]}" ]; then
+    LOCAL_APP="${APP_FILES_WIN[0]}"
+elif [ -f "${APP_FILES_OBJ[0]}" ]; then
+    LOCAL_APP="${APP_FILES_OBJ[0]}"
+fi
+
+if [ -n "$LOCAL_APP" ]; then
     log "找到 Application 固件: $(basename "$LOCAL_APP")" "INFO"
 else
-    log "未在 Firmware_app/MDK-ARM/object 目录下找到以 dgm_app_released_C2_GD*.bin 命名的固件！" "ERR"
+    log "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_app_released_C2_GD*.bin 命名的固件！" "ERR"
     MISSING_FIRMWARE=1
 fi
 
