@@ -1,4 +1,4 @@
-﻿# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
+# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
 param(
     [string]$TargetFolder = "firmware",
     [string]$Device = "GD32C103CB"
@@ -106,6 +106,7 @@ if (-not $jlinkPath) {
 # 2. Firmware Check
 Log-Message "正在校验本地固件 binaries..." "INFO"
 
+$firmwareDir = Join-Path $PSScriptRoot "firmware"
 $bootDir = Resolve-Path (Join-Path $PSScriptRoot "../../../../Firmware_boot/MDK-ARM/object") -ErrorAction SilentlyContinue
 $appDir = Resolve-Path (Join-Path $PSScriptRoot "../../../../Firmware_app/MDK-ARM/object") -ErrorAction SilentlyContinue
 $localBoot = $null
@@ -113,32 +114,46 @@ $localApp = $null
 $missingFirmware = $false
 
 # Check Bootloader
-if ($bootDir -and (Test-Path $bootDir)) {
-    $bootFiles = Get-ChildItem -Path $bootDir -Filter "dgm_boot_released_A2*.bin" -File
+if (Test-Path $firmwareDir) {
+    $bootFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_boot_released_A2*.bin" -File
     if ($bootFiles.Count -ge 1) {
         $localBoot = $bootFiles[0].FullName
         Log-Message ("找到 Bootloader 固件: " + $bootFiles[0].Name) "INFO"
-    } else {
-        Log-Message "未在 Firmware_boot/MDK-ARM/object 目录下找到以 dgm_boot_released_A2*.bin 命名的固件！" "ERR"
-        $missingFirmware = $true
     }
-} else {
-    Log-Message "未找到 Firmware_boot/MDK-ARM/object 编译输出目录！" "ERR"
+}
+if (-not $localBoot) {
+    if ($bootDir -and (Test-Path $bootDir)) {
+        $bootFiles = Get-ChildItem -Path $bootDir -Filter "dgm_boot_released_A2*.bin" -File
+        if ($bootFiles.Count -ge 1) {
+            $localBoot = $bootFiles[0].FullName
+            Log-Message ("找到 Bootloader 固件: " + $bootFiles[0].Name) "INFO"
+        }
+    }
+}
+if (-not $localBoot) {
+    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_boot_released_A2*.bin 命名的固件！" "ERR"
     $missingFirmware = $true
 }
 
 # Check App
-if ($appDir -and (Test-Path $appDir)) {
-    $appFiles = Get-ChildItem -Path $appDir -Filter "dgm_app_released_A2*.bin" -File
+if (Test-Path $firmwareDir) {
+    $appFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_app_released_A2*.bin" -File
     if ($appFiles.Count -ge 1) {
         $localApp = $appFiles[0].FullName
         Log-Message ("找到 Application 固件: " + $appFiles[0].Name) "INFO"
-    } else {
-        Log-Message "未在 Firmware_app/MDK-ARM/object 目录下找到以 dgm_app_released_A2*.bin 命名的固件！" "ERR"
-        $missingFirmware = $true
     }
-} else {
-    Log-Message "未找到 Firmware_app/MDK-ARM/object 编译输出目录！" "ERR"
+}
+if (-not $localApp) {
+    if ($appDir -and (Test-Path $appDir)) {
+        $appFiles = Get-ChildItem -Path $appDir -Filter "dgm_app_released_A2*.bin" -File
+        if ($appFiles.Count -ge 1) {
+            $localApp = $appFiles[0].FullName
+            Log-Message ("找到 Application 固件: " + $appFiles[0].Name) "INFO"
+        }
+    }
+}
+if (-not $localApp) {
+    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_app_released_A2*.bin 命名的固件！" "ERR"
     $missingFirmware = $true
 }
 
