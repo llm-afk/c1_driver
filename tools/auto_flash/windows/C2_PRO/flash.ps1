@@ -1,4 +1,4 @@
-# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
+﻿# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
 param(
     [string]$TargetFolder = "firmware",
     [string]$Device = "GD32C103CB"
@@ -51,7 +51,7 @@ function Log-ResultBlock ($ok, $msg1, $msg2 = "") {
 
 Clear-Host
 Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "             A2 J-Link SWD Auto Flashing Tool            " -ForegroundColor White -Bold
+Write-Host "           C2_PRO J-Link SWD Auto Flashing Tool          " -ForegroundColor White -Bold
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -115,7 +115,7 @@ $missingFirmware = $false
 
 # Check Bootloader
 if (Test-Path $firmwareDir) {
-    $bootFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_boot_released_A2*.bin" -File
+    $bootFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_boot_released_C2_PRO*.bin" -File
     if ($bootFiles.Count -ge 1) {
         $localBoot = $bootFiles[0].FullName
         Log-Message ("找到 Bootloader 固件: " + $bootFiles[0].Name) "INFO"
@@ -123,7 +123,7 @@ if (Test-Path $firmwareDir) {
 }
 if (-not $localBoot) {
     if ($bootDir -and (Test-Path $bootDir)) {
-        $bootFiles = Get-ChildItem -Path $bootDir -Filter "dgm_boot_released_A2*.bin" -File
+        $bootFiles = Get-ChildItem -Path $bootDir -Filter "dgm_boot_released_C2_PRO*.bin" -File
         if ($bootFiles.Count -ge 1) {
             $localBoot = $bootFiles[0].FullName
             Log-Message ("找到 Bootloader 固件: " + $bootFiles[0].Name) "INFO"
@@ -131,13 +131,13 @@ if (-not $localBoot) {
     }
 }
 if (-not $localBoot) {
-    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_boot_released_A2*.bin 命名的固件！" "ERR"
+    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_boot_released_C2_PRO*.bin 命名的固件！" "ERR"
     $missingFirmware = $true
 }
 
 # Check App
 if (Test-Path $firmwareDir) {
-    $appFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_app_released_A2*.bin" -File
+    $appFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_app_released_C2_PRO*.bin" -File
     if ($appFiles.Count -ge 1) {
         $localApp = $appFiles[0].FullName
         Log-Message ("找到 Application 固件: " + $appFiles[0].Name) "INFO"
@@ -145,7 +145,7 @@ if (Test-Path $firmwareDir) {
 }
 if (-not $localApp) {
     if ($appDir -and (Test-Path $appDir)) {
-        $appFiles = Get-ChildItem -Path $appDir -Filter "dgm_app_released_A2*.bin" -File
+        $appFiles = Get-ChildItem -Path $appDir -Filter "dgm_app_released_C2_PRO*.bin" -File
         if ($appFiles.Count -ge 1) {
             $localApp = $appFiles[0].FullName
             Log-Message ("找到 Application 固件: " + $appFiles[0].Name) "INFO"
@@ -153,13 +153,13 @@ if (-not $localApp) {
     }
 }
 if (-not $localApp) {
-    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_app_released_A2*.bin 命名的固件！" "ERR"
+    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_app_released_C2_PRO*.bin 命名的固件！" "ERR"
     $missingFirmware = $true
 }
 
 if ($missingFirmware) {
     Write-Host ""
-    Write-Host "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_A2*.bin 和 dgm_app_released_A2*.bin 打包固件。"
+    Write-Host "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_C2_PRO*.bin 和 dgm_app_released_C2_PRO*.bin 打包固件。"
     Write-Host ""
     Write-Host "按任意键退出..."
     [void]$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
