@@ -1,4 +1,4 @@
-# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
+﻿# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
 param(
     [string]$TargetFolder = "firmware",
     [string]$Device = "GD32C103CB"
