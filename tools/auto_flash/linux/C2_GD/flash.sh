@@ -125,28 +125,28 @@ BOOT_DIR="$SCRIPT_DIR/../../../../Firmware_boot/MDK-ARM/object"
 APP_DIR="$SCRIPT_DIR/../../../../Firmware_app/MDK-ARM/object"
 
 # Check Bootloader
-BOOT_FILES=("$BOOT_DIR"/dgm_boot_released_fw*.bin)
+BOOT_FILES=("$BOOT_DIR"/dgm_boot_released_C2_GD*.bin)
 if [ -f "${BOOT_FILES[0]}" ]; then
     LOCAL_BOOT="${BOOT_FILES[0]}"
     log "找到 Bootloader 固件: $(basename "$LOCAL_BOOT")" "INFO"
 else
-    log "未在 Firmware_boot/MDK-ARM/object 目录下找到以 dgm_boot_released_fw*.bin 命名的固件！" "ERR"
+    log "未在 Firmware_boot/MDK-ARM/object 目录下找到以 dgm_boot_released_C2_GD*.bin 命名的固件！" "ERR"
     MISSING_FIRMWARE=1
 fi
 
 # Check App
-APP_FILES=("$APP_DIR"/dgm_app_released_fw*.bin)
+APP_FILES=("$APP_DIR"/dgm_app_released_C2_GD*.bin)
 if [ -f "${APP_FILES[0]}" ]; then
     LOCAL_APP="${APP_FILES[0]}"
     log "找到 Application 固件: $(basename "$LOCAL_APP")" "INFO"
 else
-    log "未在 Firmware_app/MDK-ARM/object 目录下找到以 dgm_app_released_fw*.bin 命名的固件！" "ERR"
+    log "未在 Firmware_app/MDK-ARM/object 目录下找到以 dgm_app_released_C2_GD*.bin 命名的固件！" "ERR"
     MISSING_FIRMWARE=1
 fi
 
 if [ $MISSING_FIRMWARE -eq 1 ]; then
     echo
-    echo "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_fw*.bin 和 dgm_app_released_fw*.bin 打包固件。"
+    echo "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_C2_GD*.bin 和 dgm_app_released_C2_GD*.bin 打包固件。"
     echo
     read -p "按回车退出..."
     exit 1
