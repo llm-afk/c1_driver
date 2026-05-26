@@ -123,52 +123,44 @@ MISSING_FIRMWARE=0
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 LOCAL_FIRMWARE_DIR="$SCRIPT_DIR/firmware"
 WIN_FIRMWARE_DIR="$SCRIPT_DIR/../../windows/A2/firmware"
-BOOT_DIR="$SCRIPT_DIR/../../../../Firmware_boot/MDK-ARM/object"
-APP_DIR="$SCRIPT_DIR/../../../../Firmware_app/MDK-ARM/object"
 
 # Check Bootloader
 BOOT_FILES_LOCAL=("$LOCAL_FIRMWARE_DIR"/dgm_boot_released_A2*.bin)
 BOOT_FILES_WIN=("$WIN_FIRMWARE_DIR"/dgm_boot_released_A2*.bin)
-BOOT_FILES_OBJ=("$BOOT_DIR"/dgm_boot_released_A2*.bin)
 
 if [ -f "${BOOT_FILES_LOCAL[0]}" ]; then
     LOCAL_BOOT="${BOOT_FILES_LOCAL[0]}"
 elif [ -f "${BOOT_FILES_WIN[0]}" ]; then
     LOCAL_BOOT="${BOOT_FILES_WIN[0]}"
-elif [ -f "${BOOT_FILES_OBJ[0]}" ]; then
-    LOCAL_BOOT="${BOOT_FILES_OBJ[0]}"
 fi
 
 if [ -n "$LOCAL_BOOT" ]; then
     log "找到 Bootloader 固件: $(basename "$LOCAL_BOOT")" "INFO"
 else
-    log "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_boot_released_A2*.bin 命名的固件！" "ERR"
+    log "未在 firmware 目录下找到以 dgm_boot_released_A2*.bin 命名的固件！" "ERR"
     MISSING_FIRMWARE=1
 fi
 
 # Check App
 APP_FILES_LOCAL=("$LOCAL_FIRMWARE_DIR"/dgm_app_released_A2*.bin)
 APP_FILES_WIN=("$WIN_FIRMWARE_DIR"/dgm_app_released_A2*.bin)
-APP_FILES_OBJ=("$APP_DIR"/dgm_app_released_A2*.bin)
 
 if [ -f "${APP_FILES_LOCAL[0]}" ]; then
     LOCAL_APP="${APP_FILES_LOCAL[0]}"
 elif [ -f "${APP_FILES_WIN[0]}" ]; then
     LOCAL_APP="${APP_FILES_WIN[0]}"
-elif [ -f "${APP_FILES_OBJ[0]}" ]; then
-    LOCAL_APP="${APP_FILES_OBJ[0]}"
 fi
 
 if [ -n "$LOCAL_APP" ]; then
     log "找到 Application 固件: $(basename "$LOCAL_APP")" "INFO"
 else
-    log "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_app_released_A2*.bin 命名的固件！" "ERR"
+    log "未在 firmware 目录下找到以 dgm_app_released_A2*.bin 命名的固件！" "ERR"
     MISSING_FIRMWARE=1
 fi
 
 if [ $MISSING_FIRMWARE -eq 1 ]; then
     echo
-    echo "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_A2*.bin 和 dgm_app_released_A2*.bin 打包固件。"
+    echo "请确保 tools/auto_flash/linux/A2/firmware/ 目录下存在正确命名的 dgm_boot_released_A2*.bin 和 dgm_app_released_A2*.bin 打包固件。"
     echo
     read -p "按回车退出..."
     exit 1

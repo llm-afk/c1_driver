@@ -107,8 +107,6 @@ if (-not $jlinkPath) {
 Log-Message "正在校验本地固件 binaries..." "INFO"
 
 $firmwareDir = Join-Path $PSScriptRoot "firmware"
-$bootDir = Resolve-Path (Join-Path $PSScriptRoot "../../../../Firmware_boot/MDK-ARM/object") -ErrorAction SilentlyContinue
-$appDir = Resolve-Path (Join-Path $PSScriptRoot "../../../../Firmware_app/MDK-ARM/object") -ErrorAction SilentlyContinue
 $localBoot = $null
 $localApp = $null
 $missingFirmware = $false
@@ -122,16 +120,7 @@ if (Test-Path $firmwareDir) {
     }
 }
 if (-not $localBoot) {
-    if ($bootDir -and (Test-Path $bootDir)) {
-        $bootFiles = Get-ChildItem -Path $bootDir -Filter "dgm_boot_released_C2_GD*.bin" -File
-        if ($bootFiles.Count -ge 1) {
-            $localBoot = $bootFiles[0].FullName
-            Log-Message ("找到 Bootloader 固件: " + $bootFiles[0].Name) "INFO"
-        }
-    }
-}
-if (-not $localBoot) {
-    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_boot_released_C2_GD*.bin 命名的固件！" "ERR"
+    Log-Message "未在 firmware 目录下找到以 dgm_boot_released_C2_GD*.bin 命名的固件！" "ERR"
     $missingFirmware = $true
 }
 
@@ -144,22 +133,13 @@ if (Test-Path $firmwareDir) {
     }
 }
 if (-not $localApp) {
-    if ($appDir -and (Test-Path $appDir)) {
-        $appFiles = Get-ChildItem -Path $appDir -Filter "dgm_app_released_C2_GD*.bin" -File
-        if ($appFiles.Count -ge 1) {
-            $localApp = $appFiles[0].FullName
-            Log-Message ("找到 Application 固件: " + $appFiles[0].Name) "INFO"
-        }
-    }
-}
-if (-not $localApp) {
-    Log-Message "未在 tools/auto_flash 目录或编译输出目录找到以 dgm_app_released_C2_GD*.bin 命名的固件！" "ERR"
+    Log-Message "未在 firmware 目录下找到以 dgm_app_released_C2_GD*.bin 命名的固件！" "ERR"
     $missingFirmware = $true
 }
 
 if ($missingFirmware) {
     Write-Host ""
-    Write-Host "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_C2_GD*.bin 和 dgm_app_released_C2_GD*.bin 打包固件。"
+    Write-Host "请确保 tools\auto_flash\windows\C2_GD\firmware\ 目录下存在正确命名的 dgm_boot_released_C2_GD*.bin 和 dgm_app_released_C2_GD*.bin 打包固件。"
     Write-Host ""
     Write-Host "按任意键退出..."
     [void]$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
