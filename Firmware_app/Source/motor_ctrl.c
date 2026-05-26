@@ -1346,6 +1346,7 @@ static inline void current_ctrl_loop(void)
 {
     float iq_set = MotorControl.current_set;
 //    float iq_set = MotorControl.current_mit;
+    iq_set = CLAMP(iq_set, -30.0f, 30.0f);
 
     // Current ctrl
     float Vd = PI_compute_serial(&MotorControl.PID_Id,        - MotorControl.id_filtered, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, 0);
