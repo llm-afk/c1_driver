@@ -1,4 +1,4 @@
-﻿# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
+# GD32C103CB J-Link SWD Auto Flashing PowerShell Script
 param(
     [string]$TargetFolder = "firmware",
     [string]$Device = "GD32C103CB"
@@ -106,40 +106,45 @@ if (-not $jlinkPath) {
 # 2. Firmware Check
 Log-Message "正在校验本地固件 binaries..." "INFO"
 
-$firmwareDir = Join-Path $PSScriptRoot $TargetFolder
+$bootDir = Resolve-Path (Join-Path $PSScriptRoot "../../../../Firmware_boot/MDK-ARM/object") -ErrorAction SilentlyContinue
+$appDir = Resolve-Path (Join-Path $PSScriptRoot "../../../../Firmware_app/MDK-ARM/object") -ErrorAction SilentlyContinue
 $localBoot = $null
 $localApp = $null
 $missingFirmware = $false
 
-if (Test-Path $firmwareDir) {
-    $bootFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_boot*.bin" -File
-    $appFiles = Get-ChildItem -Path $firmwareDir -Filter "dgm_app*.bin" -File
-    
-    # Bootloader
+# Check Bootloader
+if ($bootDir -and (Test-Path $bootDir)) {
+    $bootFiles = Get-ChildItem -Path $bootDir -Filter "dgm_boot_released_fw*.bin" -File
     if ($bootFiles.Count -ge 1) {
         $localBoot = $bootFiles[0].FullName
         Log-Message ("找到 Bootloader 固件: " + $bootFiles[0].Name) "INFO"
     } else {
-        Log-Message "未在 $TargetFolder 目录下找到以 dgm_boot 开头的 .bin 固件！" "ERR"
+        Log-Message "未在 Firmware_boot/MDK-ARM/object 目录下找到以 dgm_boot_released_fw*.bin 命名的固件！" "ERR"
         $missingFirmware = $true
     }
-    
-    # App
+} else {
+    Log-Message "未找到 Firmware_boot/MDK-ARM/object 编译输出目录！" "ERR"
+    $missingFirmware = $true
+}
+
+# Check App
+if ($appDir -and (Test-Path $appDir)) {
+    $appFiles = Get-ChildItem -Path $appDir -Filter "dgm_app_released_fw*.bin" -File
     if ($appFiles.Count -ge 1) {
         $localApp = $appFiles[0].FullName
         Log-Message ("找到 Application 固件: " + $appFiles[0].Name) "INFO"
     } else {
-        Log-Message "未在 $TargetFolder 目录下找到以 dgm_app 开头的 .bin 固件！" "ERR"
+        Log-Message "未在 Firmware_app/MDK-ARM/object 目录下找到以 dgm_app_released_fw*.bin 命名的固件！" "ERR"
         $missingFirmware = $true
     }
 } else {
-    Log-Message "固件目录 $TargetFolder 结构损坏，未找到该目录！" "ERR"
+    Log-Message "未找到 Firmware_app/MDK-ARM/object 编译输出目录！" "ERR"
     $missingFirmware = $true
 }
 
 if ($missingFirmware) {
     Write-Host ""
-    Write-Host "请确保 tools\auto_flash\windows\$TargetFolder\ 目录下存在一个以 dgm_boot*.bin 命名以及一个以 dgm_app*.bin 命名的固件文件。"
+    Write-Host "请确保分别编译了 Bootloader 和 Application 项目，并且对应的 object/ 目录下生成了对应的 dgm_boot_released_fw*.bin 和 dgm_app_released_fw*.bin 打包固件。"
     Write-Host ""
     Write-Host "按任意键退出..."
     [void]$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
