@@ -16,7 +16,7 @@ tEncoder Encoder = {
 
 void ENCODER_init(void)
 {
-    memcpy(&Encoder.Config, (uint8_t*)(ENCODER_CALIB_PAGE*FLASH_PAGE_SIZE), sizeof(tEncoderConfig));
+    memcpy(&Encoder.Config, (uint8_t*)(FLASH_BASE + ENCODER_CALIB_PAGE*FLASH_PAGE_SIZE), sizeof(tEncoderConfig));
     uint32_t crc = crc32((uint8_t*)&Encoder.Config, sizeof(tEncoderConfig)-4);
     if(crc != Encoder.Config.crc){
         Encoder.Config.calib_valid = false;
