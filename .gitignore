@@ -1,14 +1,30 @@
+# Keil MDK-ARM build output and temporary files
+**/MDK-ARM/object/
+**/MDK-ARM/Listings/
+**/MDK-ARM/RTE/
+**/MDK-ARM/DebugConfig/
 
-Firmware_boot/MDK-ARM/JLinkLog.txt
+# Keil user-specific configuration files
+*.uvguix.*
+*.uvgui.*
 
-*.17511
-
+# Compilation outputs
 *.o
-
 *.crf
-
 *.map
-
 *.dep
-
 *.htm
+*.lnp
+*.lst
+*.axf
+*.bin
+*.hex
+*.elf
+*.d
+*._ia
+*.build_log.htm
+
+# Logs
+JLinkLog.txt
+**/JLinkLog.txt
+*.txt.bak
