@@ -28,6 +28,53 @@ int DFU_data(uint8_t *data)
     return 0;
 }
 
+/**
+  * @brief  Auto-detect the actual bootloader address at runtime.
+  *
+  *          The bootloader may reside at either:
+  *          - Page 80 (0x08014000) — old layout devices
+  *          - Page 90 (0x08016800) — new layout devices
+  *
+  *          Detection: check if a valid stack pointer and reset vector
+  *          exist at the candidate address. SP must be in RAM range
+  *          (0x20000000–0x20008000), and reset vector must be in flash
+  *          with Thumb bit set (odd address).
+  *
+  * @retval Detected bootloader base address
+  */
+static uint32_t detect_bootloader_addr(void)
+{
+    /* Candidate bootloader addresses: try new layout first, then old */
+    const uint32_t candidates[] = {
+        (0x8000000 + 90 * FLASH_PAGE_SIZE),  /* Page 90 — new layout */
+        (0x8000000 + 80 * FLASH_PAGE_SIZE),  /* Page 80 — old layout */
+    };
+
+    for (int i = 0; i < (int)(sizeof(candidates) / sizeof(candidates[0])); i++)
+    {
+        uint32_t sp  = *(uint32_t *)candidates[i];
+        uint32_t pc  = *(uint32_t *)(candidates[i] + 4);
+
+        /* SP must point into RAM (0x20000000–0x20008000 for 32KB SRAM) */
+        if (sp < 0x20000000 || sp > 0x20008000) {
+            continue;
+        }
+
+        /* PC must be in flash and Thumb bit set */
+        if ((pc & 1) == 0) {
+            continue;
+        }
+        if ((pc & ~1) < 0x08000000 || (pc & ~1) > 0x08020000) {
+            continue;
+        }
+
+        return candidates[i];
+    }
+
+    /* Fallback — use compiled-in address */
+    return BOOTLOADER_ADDR;
+}
+
 void DFU_jump_to_bootloader(void)
 {
     for (int i = 0; i < 8; i++) {
@@ -39,11 +86,13 @@ void DFU_jump_to_bootloader(void)
 
     LED_ACT_RESET();
 
+    uint32_t boot_addr = detect_bootloader_addr();
+
     /* Initialize user application's Stack Pointer */
-    __set_MSP(*(uint32_t *) BOOTLOADER_ADDR);
+    __set_MSP(*(uint32_t *) boot_addr);
 
     /* Jump to the bootloader */
-    (*(void (*)(void))(*(uint32_t *) (BOOTLOADER_ADDR + 4)))();
+    (*(void (*)(void))(*(uint32_t *) (boot_addr + 4)))();
 }
 
 static int erase_app_back(void)

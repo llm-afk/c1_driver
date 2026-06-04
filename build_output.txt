@@ -1,0 +1,68 @@
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'D:\Program Files\Keil_v5\ARM\ARMCC\Bin'
+Build target 'dgm_app'
+compiling config_recovery.c...
+compiling main.c...
+compiling od.c...
+compiling encoder.c...
+..\Source\encoder.c(474): warning:  #3170-D: use of a const variable in a constant expression is nonstandard in C
+  float vel_vec[vel_average_filter_num] = {0.0f};
+..\Source\encoder.c(486): warning:  #2532-D: support for trigraphs is disabled
+  // --- ??/???? ---
+..\Source\encoder.c(944): warning:  #223-D: function "COM_CAN_report_err" declared implicitly
+  			COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
+..\Source\encoder.c(1024): warning:  #111-D: statement is unreachable
+  			break;
+..\Source\encoder.c(1077): warning:  #940-D: missing return statement at end of non-void function "check_ex_encoder" 
+  }
+..\Source\encoder.c: 5 warnings, 0 errors
+compiling motor_ctrl.c...
+..\Source\motor_ctrl.c(66): warning:  #2532-D: support for trigraphs is disabled
+  // coef: ???????(??->??????)
+..\Source\motor_ctrl.c(376): warning:  #1182-D: a declaration cannot have a label
+  							uint16_t idx = 0x2003;
+..\Source\motor_ctrl.c(344): warning:  #546-D: transfer of control bypasses initialization of:
+            variable "idx"  (declared at line 376)
+            variable "data"  (declared at line 377)
+            variable "enable_data"  (declared at line 380)
+      switch (state) {
+      ^
+..\Source\motor_ctrl.c(705): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		double s = (MotorControl.iq_filtered >= 0.0) ? 1.0 : -1.0;
+..\Source\motor_ctrl.c(1240): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
+..\Source\motor_ctrl.c(1241): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0;
+..\Source\motor_ctrl.c(1251): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
+..\Source\motor_ctrl.c(10): warning:  #550-D: variable "mProfileAcceleration"  was set but never used
+  static float mProfileAcceleration;
+..\Source\motor_ctrl.c(11): warning:  #550-D: variable "mProfileDeceleration"  was set but never used
+  static float mProfileDeceleration;
+..\Source\motor_ctrl.c(12): warning:  #550-D: variable "mProfileTorqueSlope"  was set but never used
+  static float mProfileTorqueSlope;
+..\Source\motor_ctrl.c(1346): warning:  #177-D: function "position_ctrl_loop"  was declared but never referenced
+  static inline void position_ctrl_loop(void)
+..\Source\motor_ctrl.c(1372): warning:  #177-D: function "velocity_ctrl_loop"  was declared but never referenced
+  static inline void velocity_ctrl_loop(void)
+..\Source\motor_ctrl.c(1032): warning:  #177-D: function "calc_temperature_celsius"  was declared but never referenced
+  static inline float calc_temperature_celsius(float r_ntc) {
+..\Source\motor_ctrl.c: 13 warnings, 0 errors
+linking...
+Program Size: Code=33156 RO-data=7228 RW-data=16512 ZI-data=12992  
+FromELF: creating hex file...
+After Build - User command #1: "D:\Program Files\Keil_v5\\ARM\ARMCC\bin\fromelf.exe" --bincombined ".\object\dgm_app_fw.axf" --output="C:\Users\32196\Desktop\c1_driver\Firmware_app\MDK-ARM\object\\dgm_app_fw.bin"
+After Build - User command #2: ..\..\tools\bin_process\bin_packer.exe -i ".\object\dgm_app_fw.bin" -o ".\object\dgm_app_released_C2_GD.bin" -s 40KB -vf "..\Source\version.h"
+Pack success
+Input file       : .\object\dgm_app_fw.bin
+Output file      : .\object\dgm_app_released_C2_GD_133.bin
+Software version : 0x0085
+Hardware version : 0x0000
+Pack time        : 2026-06-04 16:24:28
+Git hash         : 73684e1a517a174ba11e73a2ad46022fe5b534eb
+Original size    : 40584 bytes
+Tail size        : 128 bytes
+Reserved size    : 36 bytes
+Package CRC32    : 0x00A5346F
+Final size       : 40960 bytes
+".\object\dgm_app_fw.axf" - 0 Error(s), 18 Warning(s).
+Build Time Elapsed:  00:00:01

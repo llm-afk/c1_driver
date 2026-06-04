@@ -3,6 +3,7 @@
 #include <string.h>
 #include "motor_ctrl.h"
 #include "flash_interface.h"
+#include "config_recovery.h"
 
 tEncoder Encoder = {
     .need_init = 20,
@@ -18,12 +19,38 @@ void ENCODER_init(void)
 {
     memcpy(&Encoder.Config, (uint8_t*)(FLASH_BASE + ENCODER_CALIB_PAGE*FLASH_PAGE_SIZE), sizeof(tEncoderConfig));
     uint32_t crc = crc32((uint8_t*)&Encoder.Config, sizeof(tEncoderConfig)-4);
+
     if(crc != Encoder.Config.crc){
-        Encoder.Config.calib_valid = false;
-        Encoder.Config.encoder_ex_offset = 0;
-        Encoder.Config.encoder_offset = 0;
-        for(int i=0; i<ENCODER_OFFSET_LUT_NUM; i++){
-            Encoder.Config.encoder_offset_lut[i] = 0;
+        /*
+         * Current calibration page (115) has no valid data.
+         * Try to recover from old calibration page (100).
+         *
+         * This handles OTA from old-layout firmware where encoder
+         * calibration was stored at page 100 instead of page 115.
+         *
+         * On new-layout devices, page 100 contains bootloader code
+         * and will fail CRC — safe no-op.
+         */
+        if (config_recovery_encoder_calib())
+        {
+            /* Successfully recovered from old location (page 100).
+               Re-read from current location (page 115) which now has
+               the migrated data. */
+            memcpy(&Encoder.Config,
+                   (uint8_t*)(FLASH_BASE + ENCODER_CALIB_PAGE*FLASH_PAGE_SIZE),
+                   sizeof(tEncoderConfig));
+            crc = crc32((uint8_t*)&Encoder.Config, sizeof(tEncoderConfig)-4);
+        }
+
+        if (crc != Encoder.Config.crc)
+        {
+            /* Both locations invalid — reset to defaults */
+            Encoder.Config.calib_valid = false;
+            Encoder.Config.encoder_ex_offset = 0;
+            Encoder.Config.encoder_offset = 0;
+            for(int i=0; i<ENCODER_OFFSET_LUT_NUM; i++){
+                Encoder.Config.encoder_offset_lut[i] = 0;
+            }
         }
     }
 }
@@ -415,18 +442,6 @@ int32_t ENCODER_EX_read(void)
     return (sample_data >> 2);
 }
 
-int32_t ENCODER_EX_read_rectified(void)
-{
-    int raw = ENCODER_EX_read();
-    if(raw != -1){
-        raw = raw - Encoder.Config.encoder_ex_offset;
-        if(raw < 0){
-            raw += ENCODER_CPR;
-        }
-    }
-    return raw;
-}
-
 int32_t ENCODER_read(void)
 {
     uint16_t data[2];
@@ -674,10 +689,6 @@ void multi_encoder(void)
 }
 
 
-bool Multi_Turn_Test(void){
-	
-}
-
 int encoder_count = 0;
 
 
@@ -690,7 +701,7 @@ void ENCODER_loop(void)
 //	if(encoder_count > 10){
 //		return;
 //	}
-	  static int32_t count_init = 0;
+//
     Encoder.raw = ENCODER_read();
     if (Encoder.Config.encoder_reverse) {
         Encoder.raw = ENCODER_CPR - 1 - Encoder.raw;

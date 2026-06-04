@@ -117,6 +117,7 @@ EE_Status EE_CleanUp(void);
 EE_Status EE_CleanUp_IT(void);
 EE_Status EE_DeleteCorruptedFlashAddress(uint32_t Address);
 void EE_EndOfCleanup_UserCallback(void);
+uint16_t CalculateCrc(EE_DATA_TYPE Data, uint16_t VirtAddress);
 
 /**
   * @}

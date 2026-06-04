@@ -3,7 +3,8 @@
 #include "encoder.h"
 #include "eeprom_emul.h"
 #include "com_can.h"
-#include  "version.h"
+#include "version.h"
+#include "config_recovery.h"
 
 typedef struct {
     uint16_t index;
@@ -202,8 +203,21 @@ void OD_init(void)
     ODObjsCount = sizeof(ODList) / sizeof(OD_entry_t);
     
     dictionary_init();
-    
+
     EE_Init(EE_FORCED_ERASE);
+
+    /*
+     * Attempt to recover configuration from old EEPROM layout.
+     *
+     * If this device was previously running old-layout firmware (EEPROM at
+     * page 101), the current EEPROM area (page 116) will be empty/uninitialized
+     * after EE_Init. This call scans the old EEPROM pages and migrates any
+     * valid configuration found there.
+     *
+     * Safe on devices already using the new layout — the old pages contain
+     * bootloader code whose CRC checks will fail.
+     */
+    config_recovery_from_old_eeprom();
 
     for(int i=0; i<ODObjsCount; i++){
         if(ODList[i].attribute & ATTR_ROM){

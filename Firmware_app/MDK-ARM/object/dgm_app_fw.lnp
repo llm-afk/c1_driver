@@ -8,6 +8,7 @@
 ".\object\motion_planner.o"
 ".\object\od.o"
 ".\object\dfu.o"
+".\object\config_recovery.o"
 ".\object\pid.o"
 ".\object\util.o"
 ".\object\fifo_buffer.o"

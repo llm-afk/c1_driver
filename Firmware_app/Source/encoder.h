@@ -72,7 +72,6 @@ float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time
 
 bool check_ex_encoder(void);
 int32_t ENCODER_EX_read(void);
-int32_t ENCODER_EX_read_rectified(void);
 int32_t ENCODER_read(void);
 void ENCODER_loop(void);
 

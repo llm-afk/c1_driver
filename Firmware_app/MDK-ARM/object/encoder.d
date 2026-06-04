@@ -43,3 +43,4 @@
 .\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 .\object\encoder.o: ..\Source\Eeprom\Porting\flash_interface.h
 .\object\encoder.o: ..\Source\Eeprom\Core\eeprom_emul_types.h
+.\object\encoder.o: ..\Source\config_recovery.h
