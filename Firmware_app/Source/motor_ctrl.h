@@ -5,6 +5,7 @@
 #include "pid.h"
 #include "util.h"
 #include "od.h"
+#include "torque_calib.h"
 
 //*****************************************************************************
 //
@@ -129,6 +130,13 @@ typedef enum {
 //*****************************************************************************
 // Motor param
 #define MOTOR_RATED_TORQUE         (MOTOR_RATED_CURRENT * MOTOR_TORQUE_CONSTANT)
+
+// 驱动器硬件 q 轴峰值电流限制 (A) — 硬件上限，写死
+#define PEAK_IQ_CURRENT                     50.0f
+
+// 力矩 ↔ q轴电流 转换（通过 torque_calib.c 中的标定表查表插值）
+#define TORQUE_TO_IQ(torque)                torque_to_iq(torque)
+#define IQ_TO_TORQUE(iq)                    iq_to_torque(iq)
 
 //#define MOTOR_BACK_EMF_CONSTANT     11.0f     // [Vpk_LL/krpm]
 //#define MOTOR_FLUX_LINKAGE          (ONE_BY_SQRT3 * MOTOR_BACK_EMF_CONSTANT * 60.0f / (1000.0f * MOTOR_POLE_PAIRS * M_2PI))     // [Wb]     ��pm = (1/��3)(Ke/(1000P))*(60/2��)

@@ -41,3 +41,4 @@
 .\object\gd32c10x_it.o: ..\Source\pid.h
 .\object\gd32c10x_it.o: ..\Source\util.h
 .\object\gd32c10x_it.o: ..\Source\od.h
+.\object\gd32c10x_it.o: ..\Source\torque_calib.h

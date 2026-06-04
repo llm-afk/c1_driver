@@ -40,3 +40,4 @@
 .\object\motion_planner.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\motion_planner.o: ..\Source\pid.h
 .\object\motion_planner.o: ..\Source\od.h
+.\object\motion_planner.o: ..\Source\torque_calib.h

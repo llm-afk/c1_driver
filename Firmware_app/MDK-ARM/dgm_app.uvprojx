@@ -446,6 +446,11 @@
               <FileType>5</FileType>
               <FilePath>..\Source\version.h</FilePath>
             </File>
+            <File>
+              <FileName>torque_calib.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Source\torque_calib.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

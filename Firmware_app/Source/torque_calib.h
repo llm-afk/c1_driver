@@ -62,6 +62,20 @@ float calib_torque_to_current(float torque,
                               const tTorqueCalibPoint *table,
                               uint16_t length);
 
+/**
+ * @brief   快捷 API: 力矩 -> Iq (使用默认标定表)
+ * @param   torque  目标力矩 [Nm], 支持正负
+ * @return  所需 q 轴电流 [A], 符号与 torque 一致
+ */
+float torque_to_iq(float torque);
+
+/**
+ * @brief   快捷 API: Iq -> 力矩 (使用默认标定表)
+ * @param   iq      q 轴电流 [A], 支持正负
+ * @return  输出力矩 [Nm], 符号与 iq 一致
+ */
+float iq_to_torque(float iq);
+
 #ifdef __cplusplus
 }
 #endif

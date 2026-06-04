@@ -707,12 +707,12 @@ static void servo_loop(void)
     if(POLARITY){
 
 //        ACTUAL_TORQUE   = - s*current_to_torque_5(fabsf(MotorControl.iq_filtered));
-                ACTUAL_TORQUE   = - MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
+                ACTUAL_TORQUE   = - IQ_TO_TORQUE(MotorControl.iq_filtered);
 				ACTUAL_VELOCITY = - INTER_TO_USR(Encoder.vel);	
         ACTUAL_POSITION = - INTER_TO_USR(Encoder.shadow_count);
     }else{
 //        ACTUAL_TORQUE   = + s*current_to_torque_5(fabsf(MotorControl.iq_filtered));
-				ACTUAL_TORQUE   = + MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
+				ACTUAL_TORQUE   = + IQ_TO_TORQUE(MotorControl.iq_filtered);
 				ACTUAL_VELOCITY = + INTER_TO_USR(Encoder.vel);
 				ACTUAL_POSITION = + INTER_TO_USR(Encoder.shadow_count);
     }
@@ -732,7 +732,7 @@ static void servo_loop(void)
 
             MotorControl.i_bus = MotorControl.mod_d * MotorControl.Id + MotorControl.mod_q * MotorControl.iq_filtered;
             MotorControl.electrical_power = MotorControl.BusVoltage * MotorControl.i_bus;
-            MotorControl.mechanical_power = MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT * M_2PI * Encoder.vel / ENCODER_CPR_F;  // P = 2�� * Torque * Vel(r/s)
+            MotorControl.mechanical_power = IQ_TO_TORQUE(MotorControl.iq_filtered) * M_2PI * Encoder.vel / ENCODER_CPR_F;  // P = 2π * Torque * Vel(r/s)
 
             // Operation mode switch
             if(MotorControl.op_mode != OPERATION_MODE){
@@ -1235,15 +1235,13 @@ static inline void motor_mit_control(void)
 	  tau_l =
       MotorControl.Kp * pos_err +
         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
+		// 1. 力矩限幅
 		tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
-		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
-
-//			MotorControl.current_set = tau_l / GEAR_RATIO;  // 如果不考虑效率
-//			head_tor = MotorControl.current_set;
-//		MotorControl.current_set = torque_to_current(coef5, dcoef5, n5, 24.5);
-//		MotorControl.current_set = s*torque_to_current_5( fabsf(tau_l));
-
-		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
+		// 2. 力矩→q轴电流
+		float iq_target = TORQUE_TO_IQ(tau_l);
+		// 3. q轴电流限幅（驱动器硬件上限）
+		iq_target = CLAMP(iq_target, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
+		MotorControl.current_set = iq_target;
 		
 //		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
 
@@ -1346,7 +1344,7 @@ static inline void current_ctrl_loop(void)
 {
     float iq_set = MotorControl.current_set;
 //    float iq_set = MotorControl.current_mit;
-    iq_set = CLAMP(iq_set, -30.0f, 30.0f);
+    iq_set = CLAMP(iq_set, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
 
     // Current ctrl
     float Vd = PI_compute_serial(&MotorControl.PID_Id,        - MotorControl.id_filtered, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, 0);

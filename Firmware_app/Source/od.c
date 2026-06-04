@@ -120,9 +120,9 @@ static void dictionary_init(void)
     ODObjs.heartbeat_consumer_time = 0;
     
     ODObjs.motor_pp = 8;
-    ODObjs.motor_r = 0.5629f;
-    ODObjs.motor_l_d = 431e-6f;
-    ODObjs.motor_l_q = 431e-6f;
+    ODObjs.motor_r = 0.275f;        // 线电阻 550mΩ / 2
+    ODObjs.motor_l_d = 160e-6f;     // 线电感 0.32mH / 2
+    ODObjs.motor_l_q = 160e-6f;
     ODObjs.motor_rated_vel = 30.0f;
     ODObjs.motor_rated_current = 160.0f;
     ODObjs.motor_torque_constant = 1.00f;
@@ -131,7 +131,7 @@ static void dictionary_init(void)
     ODObjs.polarity = 0;
     ODObjs.elec_gear = ENCODER_CPR_F;
     ODObjs.load_inertia = 0.0f;
-    ODObjs.torque_limit = 30.0f;
+    ODObjs.torque_limit = 50.0f;
     ODObjs.over_current_level = 160.0f;
     ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;

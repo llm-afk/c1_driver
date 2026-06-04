@@ -11,6 +11,7 @@
 ".\object\pid.o"
 ".\object\util.o"
 ".\object\fifo_buffer.o"
+".\object\torque_calib.o"
 ".\object\gd32c10x_dma.o"
 ".\object\gd32c10x_exti.o"
 ".\object\gd32c10x_fmc.o"

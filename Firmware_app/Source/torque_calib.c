@@ -139,3 +139,38 @@ float calib_torque_to_current(float torque,
 
     return sign * interp_torque_to_iq(abs_torque, table, length);
 }
+
+
+/* =========================================================================
+ * 默认标定表 (扭矩系数 = 1.0, 即 Iq = Torque)
+ * 后续将此表替换为实测标定数据即可
+ * ========================================================================= */
+static const tTorqueCalibPoint default_calib_table[] = {
+    { 0.0f,   0.0f},
+    { 1.0f,   1.0f},
+    { 5.0f,   5.0f},
+    {10.0f,  10.0f},
+    {15.0f,  15.0f},
+    {20.0f,  20.0f},
+    {25.0f,  25.0f},
+    {30.0f,  30.0f},
+    {35.0f,  35.0f},
+    {40.0f,  40.0f},
+    {45.0f,  45.0f},
+    {50.0f,  50.0f},
+};
+
+#define DEFAULT_CALIB_TABLE_LEN  (sizeof(default_calib_table) / sizeof(default_calib_table[0]))
+
+/* ---- 快捷 API: 使用默认标定表 ---- */
+
+float torque_to_iq(float torque)
+{
+    return calib_torque_to_current(torque, default_calib_table, DEFAULT_CALIB_TABLE_LEN);
+}
+
+float iq_to_torque(float iq)
+{
+    return calib_current_to_torque(iq, default_calib_table, DEFAULT_CALIB_TABLE_LEN);
+}
+

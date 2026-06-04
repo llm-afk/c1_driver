@@ -40,6 +40,7 @@
 .\object\encoder.o: ..\Source\pid.h
 .\object\encoder.o: ..\Source\util.h
 .\object\encoder.o: ..\Source\od.h
+.\object\encoder.o: ..\Source\torque_calib.h
 .\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 .\object\encoder.o: ..\Source\Eeprom\Porting\flash_interface.h
 .\object\encoder.o: ..\Source\Eeprom\Core\eeprom_emul_types.h

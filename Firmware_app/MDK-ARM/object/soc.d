@@ -39,3 +39,4 @@
 .\object\soc.o: ..\Source\pid.h
 .\object\soc.o: ..\Source\util.h
 .\object\soc.o: ..\Source\od.h
+.\object\soc.o: ..\Source\torque_calib.h

@@ -40,4 +40,5 @@
 .\object\main.o: ..\Source\pid.h
 .\object\main.o: ..\Source\util.h
 .\object\main.o: ..\Source\od.h
+.\object\main.o: ..\Source\torque_calib.h
 .\object\main.o: ..\Source\com_can.h
