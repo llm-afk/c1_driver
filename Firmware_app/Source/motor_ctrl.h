@@ -156,7 +156,7 @@ typedef enum {
 #define POSITION_CTRL_PERIOD        (1.0f / POSITION_CTRL_FREQUENCY)
 #define SERVO_CTRL_FREQUENCY        (CURRENT_MEASURE_HZ / 10)
 #define SERVO_CTRL_PERIOD           (1.0f / SERVO_CTRL_FREQUENCY)
-#define GEAR_RATIO                  (ODObjs.node_id == 4 ? 5.0f : 25.0f)
+#define GEAR_RATIO                  25
 
 // Control loop define
 #define ENABLED_LOOP_NONE	        0
