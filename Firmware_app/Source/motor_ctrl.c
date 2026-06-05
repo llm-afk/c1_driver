@@ -1107,13 +1107,13 @@ void MC_low_priority_task(void)
 
         // drv over temperature check
         DRV_TEMPERATURE = SOC_read_drv_temp();
-        if(DRV_TEMPERATURE > 85){
+        if(DRV_TEMPERATURE > OVER_TEMP_DRV_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_DRV);
         }
         
         // motor over temperature check
         MOTOR_TEMPERATURE = get_ntc_temperature();
-        if(MOTOR_TEMPERATURE > 150){
+        if(MOTOR_TEMPERATURE > OVER_TEMP_MOTOR_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_MOTOR);
         }
         

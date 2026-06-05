@@ -136,8 +136,8 @@ static void dictionary_init(void)
     ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;
     ODObjs.under_voltage_level = 18.0f;
-    ODObjs.over_temp_drv_level = 90.0f;
-    ODObjs.over_temp_motor_level = 80.0f;
+    ODObjs.over_temp_drv_level = 85.0f;
+    ODObjs.over_temp_motor_level = 150.0f;
     ODObjs.position_window = 0.01f;
     ODObjs.position_window_time = 100;
     ODObjs.velocity_window = 1.0f;

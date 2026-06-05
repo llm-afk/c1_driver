@@ -3,7 +3,7 @@
 
 #include "motor_ctrl.h"
 
-#define ENCODER_CALIB_CURRENT   2.0f
+#define ENCODER_CALIB_CURRENT   10.0f
 #define ENCODER_PLL_BANDWIDTH   1500.0f     // rad/s
 #define ENCODER_PLL_DT          CURRENT_CTRL_PERIOD
 
