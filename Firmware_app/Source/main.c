@@ -276,8 +276,8 @@ static void TIMER0_init(void)
     /* configure TIMER break function */
     timer_break_struct_para_init(&timer_breakpara);
     /* automatic output enable, break, dead time and lock configuration*/
-    timer_breakpara.runoffstate     = TIMER_ROS_STATE_DISABLE;
-    timer_breakpara.ideloffstate    = TIMER_IOS_STATE_DISABLE;
+    timer_breakpara.runoffstate     = TIMER_ROS_STATE_ENABLE;
+    timer_breakpara.ideloffstate    = TIMER_IOS_STATE_ENABLE;
     timer_breakpara.deadtime        = 0; // use FD6288Q hardware deadtime 200ns
     timer_breakpara.breakpolarity   = TIMER_BREAK_POLARITY_LOW;
     timer_breakpara.outputautostate = TIMER_OUTAUTO_DISABLE;

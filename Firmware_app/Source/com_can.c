@@ -238,9 +238,17 @@ static void parse_frame(CanFrame *frame)
 								mHeartbeatConsumerTick = get_tick();
 
 					if(!multi_check_flag){
-							MotorControl.pos_set = *(float*)&frame->data[0];
-							MotorControl.velocity_set = *(float*)&frame->data[4];
-							MotorControl.current_mit = *(float*)&frame->data[8];
+							float target_pos = *(float*)&frame->data[0];
+							float target_vel = *(float*)&frame->data[4];
+							float target_cur = *(float*)&frame->data[8];
+							if(ODObjs.polarity){
+								target_pos = -target_pos;
+								target_vel = -target_vel;
+								target_cur = -target_cur;
+							}
+							MotorControl.pos_set = target_pos;
+							MotorControl.velocity_set = target_vel;
+							MotorControl.current_mit = target_cur;
 							MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
 							MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
 //						}
@@ -256,11 +264,17 @@ static void parse_frame(CanFrame *frame)
 						}
 						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
-						*(float*)&frame->data[0] = MotorControl.raw_pos;
-            *(float*)&frame->data[4] = MotorControl.raw_vel;
+						float feedback_pos = MotorControl.raw_pos;
+						float feedback_vel = MotorControl.raw_vel;
+						if(ODObjs.polarity){
+							feedback_pos = -feedback_pos;
+							feedback_vel = -feedback_vel;
+						}
+						*(float*)&frame->data[0] = feedback_pos;
+            *(float*)&frame->data[4] = feedback_vel;
 						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
 						if(multi_check_flag){
-							*(float*)&frame->data[0] = MotorControl.raw_pos;
+							*(float*)&frame->data[0] = feedback_pos;
 							*(float*)&frame->data[4] = ex_encoder_turns;
 							*(float*)&frame->data[8] = in_encoder_turns - ex_encoder_turns; 
 						}
@@ -283,9 +297,17 @@ static void parse_frame(CanFrame *frame)
 							OD_write_2(idx, enable_data);
 							count_1 ++;
 						}
-						MotorControl.pos_set = *(float*)&frame->data[0];
-						MotorControl.velocity_set = *(float*)&frame->data[4];
-						MotorControl.current_mit = *(float*)&frame->data[8];
+						float target_pos = *(float*)&frame->data[0];
+						float target_vel = *(float*)&frame->data[4];
+						float target_cur = *(float*)&frame->data[8];
+						if(ODObjs.polarity){
+							target_pos = -target_pos;
+							target_vel = -target_vel;
+							target_cur = -target_cur;
+						}
+						MotorControl.pos_set = target_pos;
+						MotorControl.velocity_set = target_vel;
+						MotorControl.current_mit = target_cur;
 						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
 						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
 
@@ -299,8 +321,14 @@ static void parse_frame(CanFrame *frame)
 						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
 						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
 
-            *(float*)&frame->data[0] = MotorControl.raw_pos;
-            *(float*)&frame->data[4] = MotorControl.raw_vel;
+						float feedback_pos = MotorControl.raw_pos;
+						float feedback_vel = MotorControl.raw_vel;
+						if(ODObjs.polarity){
+							feedback_pos = -feedback_pos;
+							feedback_vel = -feedback_vel;
+						}
+            *(float*)&frame->data[0] = feedback_pos;
+            *(float*)&frame->data[4] = feedback_vel;
 						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
 							*(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
