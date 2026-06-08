@@ -131,13 +131,13 @@ static void dictionary_init(void)
     ODObjs.polarity = 1;
     ODObjs.elec_gear = ENCODER_CPR_F;
     ODObjs.load_inertia = 0.0f;
-    ODObjs.torque_limit = 50.0f;
+    ODObjs.torque_limit = 60.0f;
     ODObjs.over_current_level = 160.0f;
     ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;
     ODObjs.under_voltage_level = 18.0f;
-    ODObjs.over_temp_drv_level = 90.0f;
-    ODObjs.over_temp_motor_level = 80.0f;
+    ODObjs.over_temp_drv_level = 85.0f;
+    ODObjs.over_temp_motor_level = 150.0f;
     ODObjs.position_window = 0.01f;
     ODObjs.position_window_time = 100;
     ODObjs.velocity_window = 1.0f;
