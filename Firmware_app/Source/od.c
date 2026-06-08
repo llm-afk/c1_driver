@@ -87,6 +87,7 @@ static const OD_entry_t ODList[] = {
     {0x2100, &ODObjs.firmware_version,          2, ATTR_RAM | ATTR_R,  NULL},
     {0x2101, &ODObjs.restore_default,           1, ATTR_RAM | ATTR_W,  OD_restore_defalt},
     {0x2102, &ODObjs.plot_ctrl,                 1, ATTR_RAM | ATTR_W,  NULL},
+    {0x2103, &ODObjs.hardware_version,          2, ATTR_RAM | ATTR_R,  NULL},
 };
 
 static void dictionary_init(void)
@@ -131,7 +132,7 @@ static void dictionary_init(void)
     ODObjs.polarity = 0;
     ODObjs.elec_gear = ENCODER_CPR_F;
     ODObjs.load_inertia = 0.0f;
-    ODObjs.torque_limit = 50.0f;
+    ODObjs.torque_limit = 60.0f;
     ODObjs.over_current_level = 160.0f;
     ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;
@@ -161,6 +162,8 @@ static void dictionary_init(void)
     ODObjs.firmware_version = APP_VERSION;
     ODObjs.restore_default = 0;
     ODObjs.plot_ctrl = 0;
+
+    ODObjs.hardware_version = 102;
 }
 
 OD_entry_t *find_entry(uint16_t index)
