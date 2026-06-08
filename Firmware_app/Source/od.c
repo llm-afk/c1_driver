@@ -87,6 +87,8 @@ static const OD_entry_t ODList[] = {
     {0x2100, &ODObjs.firmware_version,          2, ATTR_RAM | ATTR_R,  NULL},
     {0x2101, &ODObjs.restore_default,           1, ATTR_RAM | ATTR_W,  OD_restore_defalt},
     {0x2102, &ODObjs.plot_ctrl,                 1, ATTR_RAM | ATTR_W,  NULL},
+
+    {0x2103, &ODObjs.hardware_version,          2, ATTR_RAM | ATTR_R,  NULL},
 };
 
 static void dictionary_init(void)
@@ -161,6 +163,8 @@ static void dictionary_init(void)
     ODObjs.firmware_version = APP_VERSION;
     ODObjs.restore_default = 0;
     ODObjs.plot_ctrl = 0;
+
+    ODObjs.hardware_version = 103;
 }
 
 OD_entry_t *find_entry(uint16_t index)

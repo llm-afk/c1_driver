@@ -90,6 +90,8 @@ typedef struct {
     uint16_t firmware_version;
     uint8_t  restore_default;
     uint8_t  plot_ctrl;
+
+    uint16_t hardware_version;
 } ODObjs_t;
 
 extern ODObjs_t ODObjs;
