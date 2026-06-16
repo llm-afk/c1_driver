@@ -38,5 +38,6 @@
 .\object\motion_planner.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\motion_planner.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
 .\object\motion_planner.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-.\object\motion_planner.o: ..\Source\pid.h
 .\object\motion_planner.o: ..\Source\od.h
+.\object\motion_planner.o: ..\Source\torque_calib.h
+.\object\motion_planner.o: ..\Source\pid.h

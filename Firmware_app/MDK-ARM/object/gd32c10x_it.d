@@ -37,7 +37,8 @@
 .\object\gd32c10x_it.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\gd32c10x_it.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\gd32c10x_it.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\gd32c10x_it.o: ..\Source\od.h
+.\object\gd32c10x_it.o: ..\Source\torque_calib.h
 .\object\gd32c10x_it.o: ..\Source\motor_ctrl.h
 .\object\gd32c10x_it.o: ..\Source\pid.h
 .\object\gd32c10x_it.o: ..\Source\util.h
-.\object\gd32c10x_it.o: ..\Source\od.h

@@ -1,10 +1,10 @@
 #include "od.h"
-#include "util.h"
+#include "util.h"  
 #include "encoder.h"
 #include "eeprom_emul.h"
 #include "com_can.h"
 #include "version.h"
-#include "config_recovery.h"
+
 
 typedef struct {
     uint16_t index;
@@ -16,12 +16,24 @@ typedef struct {
 
 ODObjs_t ODObjs;
 static uint16_t ODObjsCount;
+uint16_t g_current_sdo_index = 0;
+
+static eBranchType Parse_Branch_From_SN(void);
+static int SN_update_callback(void);
 
 static const OD_entry_t ODList[] = {
     {0x2000, &ODObjs.error_code,                2, ATTR_RAM | ATTR_R,  NULL},
     {0x2001, &ODObjs.status_word,               2, ATTR_RAM | ATTR_R,  NULL},
     {0x2002, &ODObjs.control_word,              2, ATTR_RAM | ATTR_RW, MC_controlword_update},
     {0x2003, &ODObjs.operation_mode,            1, ATTR_RAM | ATTR_RW, NULL},
+    
+    {0x2004, &ODObjs.sn_s0,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
+    {0x2005, &ODObjs.sn_s1,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
+    {0x2006, &ODObjs.sn_s2,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
+    {0x2007, &ODObjs.sn_s3,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
+    {0x2008, &ODObjs.sn_s4,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
+    {0x2009, &ODObjs.sn_s5,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
+    {0x200A, &ODObjs.sn_s6,                     4, ATTR_ROM | ATTR_RW,  SN_update_callback},
     
     {0x2010, &ODObjs.target_position,           4, ATTR_RAM | ATTR_RW, MC_position_update},
     {0x2011, &ODObjs.target_velocity,           4, ATTR_RAM | ATTR_RW, MC_velocity_update},
@@ -83,8 +95,6 @@ static const OD_entry_t ODList[] = {
     {0x2083, &ODObjs.profile_torque_slope,      4, ATTR_ROM | ATTR_RW, MC_profile_update},
     
     {0x2090, &ODObjs.home_offset,               4, ATTR_ROM | ATTR_RW, NULL},
-//		{0x2091, &ODObjs.in_encoder_offset,          2, ATTR_ROM | ATTR_RW, NULL},
-//		{0x2092, &ODObjs.ex_encoder_offset,          2, ATTR_ROM | ATTR_RW, NULL},
     {0x2100, &ODObjs.firmware_version,          2, ATTR_RAM | ATTR_R,  NULL},
     {0x2101, &ODObjs.restore_default,           1, ATTR_RAM | ATTR_W,  OD_restore_defalt},
     {0x2102, &ODObjs.plot_ctrl,                 1, ATTR_RAM | ATTR_W,  NULL},
@@ -120,25 +130,26 @@ static void dictionary_init(void)
     ODObjs.heartbeat_producer_time = 0;
     ODObjs.heartbeat_consumer_time = 0;
     
-    ODObjs.motor_pp = 8;
-    ODObjs.motor_r = 0.5629f;
-    ODObjs.motor_l_d = 431e-6f;
-    ODObjs.motor_l_q = 431e-6f;
+    ODObjs.sn_s0 = 0;
+    ODObjs.sn_s1 = 0;
+    ODObjs.sn_s2 = 0;
+    ODObjs.sn_s3 = 0;
+    ODObjs.sn_s4 = 0;
+    ODObjs.sn_s5 = 0;
+    ODObjs.sn_s6 = 0;
+    
     ODObjs.motor_rated_vel = 30.0f;
     ODObjs.motor_rated_current = 160.0f;
     ODObjs.motor_torque_constant = 1.00f;
     ODObjs.motor_inertia = 0.000007f;
-    
-    ODObjs.polarity = 0;
     ODObjs.elec_gear = ENCODER_CPR_F;
     ODObjs.load_inertia = 0.0f;
-    ODObjs.torque_limit = 60.0f;
     ODObjs.over_current_level = 160.0f;
     ODObjs.over_load_dpp_level = 99999999.0f;
     ODObjs.over_voltage_level = 40.0f;
     ODObjs.under_voltage_level = 18.0f;
-    ODObjs.over_temp_drv_level = 90.0f;
-    ODObjs.over_temp_motor_level = 80.0f;
+    ODObjs.over_temp_drv_level = 85.0f;
+    ODObjs.over_temp_motor_level = 150.0f;
     ODObjs.position_window = 0.01f;
     ODObjs.position_window_time = 100;
     ODObjs.velocity_window = 1.0f;
@@ -169,11 +180,7 @@ OD_entry_t *find_entry(uint16_t index)
     uint16_t min = 0;
     uint16_t max = ODObjsCount - 1;
 
-    /* Fast search in ordered Object Dictionary. If indexes are mixed,
-     * this won't work. If Object Dictionary has up to N entries, then the
-     * max number of loop passes is log2(N) */
-    while (min < max) {
-        /* get entry between min and max */
+    while (min <= max) {
         uint16_t cur = (min + max) >> 1;
         OD_entry_t* entry = (OD_entry_t*)&ODList[cur];
 
@@ -198,6 +205,74 @@ OD_entry_t *find_entry(uint16_t index)
     return NULL;
 }
 
+// 解析26位SN码，提取硬件版本段（第13-16字节）的B位和C位
+static eBranchType Parse_Branch_From_SN(void)
+{
+    // 根据26位编码格式：
+    // 第1段(2) + 第2段(4) + 第3段(4) + 第4段(2) = 前12个字节，放在 sn_s0, sn_s1, sn_s2 中
+    // 第5段 硬件版本(4位ABCD)：放在 sn_s3 中
+    // 因为 GD32 是小端序(Little Endian)，所以内存存放顺序如下：
+    // sn_s3 的 [7:0]   是 A位
+    // sn_s3 的 [15:8]  是 B位
+    // sn_s3 的 [23:16] 是 C位
+    // sn_s3 的 [31:24] 是 D位
+    
+    uint8_t b_bit_platform = (ODObjs.sn_s3 >> 8) & 0xFF;  // B位: 芯片平台
+    uint8_t c_bit_motor    = (ODObjs.sn_s3 >> 16) & 0xFF; // C位: 电机型号
+    
+    if(b_bit_platform != '1') return BRANCH_UNKNOWN; // 仅支持 GD平台 
+    
+    // 根据 C 位解析对应的电机型号和减速比硬件分支
+    switch (c_bit_motor) 
+    {
+        case '1': return BRANCH_C2_NEW;        
+        case '3': return BRANCH_C2_PRO;      
+        case '4': return BRANCH_C2_PRO_XINZHI;  
+        case '5': return BRANCH_A2;    
+        case '6': return BRANCH_A2_XINZHI;  
+        default:  return BRANCH_UNKNOWN;  
+    }
+}
+
+/**
+ * @brief 如果没有写入过sn码，报错始终存在，这样无法使能电机
+ */
+extern uint8_t  g_need_reboot;
+extern uint32_t g_reboot_tick;
+
+static int SN_update_callback(void)
+{
+    // 只在写完最后一段 SN (sn_s6) 时触发软复位重启 
+    if (g_current_sdo_index == 0x200A)
+    {
+        g_need_reboot = 1;
+        g_reboot_tick = get_tick();
+    }
+    return 0;
+}
+
+void OD_check_sn(void)
+{
+    eBranchType determined_branch = Parse_Branch_From_SN();
+    
+    if(determined_branch == BRANCH_UNKNOWN) 
+    {
+        // If unknown or empty SN, lock the motor system by raising a NO_SN error
+        ERROR_SET(ERR_NO_SN);
+    }
+    else 
+    {
+        // If valid SN, clear the error and initialize the hardware configurations
+        ERROR_CLR(ERR_NO_SN);
+        HW_Config_Init(determined_branch);
+        
+        // Custom feature: A2 series with ID 4 has a gear ratio of 5
+        if((g_current_branch == BRANCH_A2 || g_current_branch == BRANCH_A2_XINZHI) && ODObjs.node_id == 4) {
+            g_gear_ratio = 5.0f;
+        }
+    }
+}
+
 void OD_init(void)
 {
     ODObjsCount = sizeof(ODList) / sizeof(OD_entry_t);
@@ -205,19 +280,6 @@ void OD_init(void)
     dictionary_init();
 
     EE_Init(EE_FORCED_ERASE);
-
-    /*
-     * Attempt to recover configuration from old EEPROM layout.
-     *
-     * If this device was previously running old-layout firmware (EEPROM at
-     * page 101), the current EEPROM area (page 116) will be empty/uninitialized
-     * after EE_Init. This call scans the old EEPROM pages and migrates any
-     * valid configuration found there.
-     *
-     * Safe on devices already using the new layout — the old pages contain
-     * bootloader code whose CRC checks will fail.
-     */
-    config_recovery_from_old_eeprom();
 
     for(int i=0; i<ODObjsCount; i++){
         if(ODList[i].attribute & ATTR_ROM){
@@ -236,6 +298,11 @@ void OD_init(void)
             }
         }
     }
+    
+    // ---------------------------------------------------------
+    // Parse the SN code from EEPROM and apply hardware branch
+    // ---------------------------------------------------------
+    OD_check_sn();
 }
 
 int OD_restore_defalt(void)
@@ -248,7 +315,8 @@ int OD_restore_defalt(void)
         
         dictionary_init();
         EE_Format(EE_FORCED_ERASE);
-        
+        OD_check_sn();
+
         return 0;
     }
     
@@ -479,9 +547,11 @@ uint8_t OD_write_4(uint16_t idx, uint8_t *data)
     }
     
     if(cs == CS_W_ACK && entry->update_func != NULL){
+        g_current_sdo_index = entry->index;
         if(0 != entry->update_func()){
             cs = CS_ERR;
         }
+        g_current_sdo_index = 0;
     }
     
     for(int i=0; i<4; i++){
@@ -489,4 +559,157 @@ uint8_t OD_write_4(uint16_t idx, uint8_t *data)
     }
     
     return cs;    
+}
+
+
+// Global parameters that differ across branches
+float g_i_scale = 15.0f;
+float g_encoder_calib_current = 2.0f;
+float g_gear_ratio = 12.0f;
+int g_multi_pri_gear = 17;
+int g_multi_sec_gear = 18;
+const tTorqueCalibPoint* g_torque_calib_table = NULL;
+uint16_t g_torque_calib_table_len = 0;
+
+
+// Torque calibration tables for different branches
+static const tTorqueCalibPoint table_c2_new[] = {
+    {0.0f, 0.0f},
+    {100.0f, 100.0f} // Placeholder
+};
+
+static const tTorqueCalibPoint table_c2_pro[] = {
+    {0.0f, 0.0f},
+    {100.0f, 100.0f} // Placeholder
+};
+
+static const tTorqueCalibPoint table_c2_pro_xinzhi[] = {
+    {0.0f, 0.0f},
+    {100.0f, 100.0f} // Placeholder
+};
+
+static const tTorqueCalibPoint table_a2[] = {
+    {0.0f, 0.0f},
+    {100.0f, 100.0f} // Placeholder
+};
+
+static const tTorqueCalibPoint table_a2_xinzhi[] = {
+    {0.0f, 0.0f},
+    {100.0f, 100.0f} // Placeholder
+};
+
+
+eBranchType g_current_branch;
+
+void HW_Config_Init(eBranchType branch)
+{
+    g_current_branch = branch;
+
+    switch (branch) 
+    {
+        case BRANCH_C2_NEW:
+        {
+            g_i_scale               = 15.0f;
+            g_encoder_calib_current = 8.0f;
+            g_gear_ratio            = 12.0f;
+            g_multi_pri_gear        = 17;
+            g_multi_sec_gear        = 18; // ±0.75 圈  4.7124rad
+            g_torque_calib_table    = table_c2_new;
+            g_torque_calib_table_len = sizeof(table_c2_new) / sizeof(table_c2_new[0]);
+            ODObjs.motor_pp   = 8;
+            ODObjs.motor_r    = 0.5629f;
+            ODObjs.motor_l_d  = 431e-6f;
+            ODObjs.motor_l_q  = 431e-6f;
+            ODObjs.polarity   = 0;
+            ODObjs.over_temp_drv_level   = 85.0f;
+            ODObjs.over_temp_motor_level = 150.0f;
+            ODObjs.torque_limit          = 30.0f;
+            ODObjs.peak_iq_current       = 30.0f;
+            break;
+        }
+        case BRANCH_C2_PRO:
+        {
+            g_i_scale               = 15.0f;
+            g_encoder_calib_current = 8.0f;
+            g_gear_ratio            = 25.0f;
+            g_multi_pri_gear        = 32;
+            g_multi_sec_gear        = 31; // ±0.62 圈  ±3.8936rad
+            g_torque_calib_table    = table_c2_pro;
+            g_torque_calib_table_len = sizeof(table_c2_pro) / sizeof(table_c2_pro[0]);
+            ODObjs.motor_pp   = 8;
+            ODObjs.motor_r    = 0.275f;
+            ODObjs.motor_l_d  = 160e-6f;
+            ODObjs.motor_l_q  = 160e-6f;
+            ODObjs.polarity   = 0;
+            ODObjs.over_temp_drv_level   = 85.0f;
+            ODObjs.over_temp_motor_level = 150.0f;
+            ODObjs.torque_limit          = 50.0f;
+            ODObjs.peak_iq_current       = 50.0f;
+            break;
+        }
+        case BRANCH_C2_PRO_XINZHI:
+        {
+            g_i_scale               = 15.0f;
+            g_encoder_calib_current = 8.0f;
+            g_gear_ratio            = 25.0f;
+            g_multi_pri_gear        = 32;
+            g_multi_sec_gear        = 31; // ±0.62 圈  ±3.8936rad
+            g_torque_calib_table    = table_c2_pro_xinzhi;
+            g_torque_calib_table_len = sizeof(table_c2_pro_xinzhi) / sizeof(table_c2_pro_xinzhi[0]);
+            ODObjs.motor_pp   = 10;
+            ODObjs.motor_r    = 0.275f;
+            ODObjs.motor_l_d  = 160e-6f;        
+            ODObjs.motor_l_q  = 160e-6f;
+            ODObjs.polarity   = 1;
+            ODObjs.over_temp_drv_level   = 85.0f;
+            ODObjs.over_temp_motor_level = 150.0f;
+            ODObjs.torque_limit          = 50.0f;
+            ODObjs.peak_iq_current       = 50.0f;
+            break;
+        }
+        case BRANCH_A2:
+        {
+            g_i_scale               = 13.0f;
+            g_encoder_calib_current = 8.0f;
+            g_gear_ratio            = 25.0f;
+            g_multi_pri_gear        = 32;
+            g_multi_sec_gear        = 31; // ±0.62 圈  ±3.8936rad
+            g_torque_calib_table    = table_a2;
+            g_torque_calib_table_len = sizeof(table_a2) / sizeof(table_a2[0]);
+            ODObjs.motor_pp   = 8;
+            ODObjs.motor_r    = 0.275f;
+            ODObjs.motor_l_d  = 160e-6f;        
+            ODObjs.motor_l_q  = 160e-6f;
+            ODObjs.polarity   = 0;
+            ODObjs.over_temp_drv_level   = 85.0f;
+            ODObjs.over_temp_motor_level = 150.0f;
+            ODObjs.torque_limit          = 90.0f;
+            ODObjs.peak_iq_current       = 60.0f;
+            break;
+        }
+        case BRANCH_A2_XINZHI:
+        {
+            g_i_scale               = 13.0f; // 10->82.5A  13->63.4A
+            g_encoder_calib_current = 8.0f;
+            g_gear_ratio            = 25.0f;
+            g_multi_pri_gear        = 32;  
+            g_multi_sec_gear        = 31; // ±0.62 圈  ±3.8936rad
+            g_torque_calib_table    = table_a2_xinzhi;
+            g_torque_calib_table_len = sizeof(table_a2_xinzhi) / sizeof(table_a2_xinzhi[0]);
+            ODObjs.motor_pp   = 10;
+            ODObjs.motor_r    = 0.275f;
+            ODObjs.motor_l_d  = 160e-6f;        
+            ODObjs.motor_l_q  = 160e-6f;
+            ODObjs.polarity   = 1;
+            ODObjs.over_temp_drv_level   = 85.0f;
+            ODObjs.over_temp_motor_level = 150.0f;
+            ODObjs.torque_limit          = 90.0f;
+            ODObjs.peak_iq_current       = 60.0f;
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
 }

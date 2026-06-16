@@ -35,7 +35,8 @@
 .\object\soc.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\soc.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\soc.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\soc.o: ..\Source\od.h
+.\object\soc.o: ..\Source\torque_calib.h
 .\object\soc.o: ..\Source\motor_ctrl.h
 .\object\soc.o: ..\Source\pid.h
 .\object\soc.o: ..\Source\util.h
-.\object\soc.o: ..\Source\od.h

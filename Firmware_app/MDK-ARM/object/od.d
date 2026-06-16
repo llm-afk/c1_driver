@@ -3,6 +3,7 @@
 .\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\object\od.o: ..\Source\torque_calib.h
 .\object\od.o: ..\Source\util.h
 .\object\od.o: ..\Source\encoder.h
 .\object\od.o: ..\Source\motor_ctrl.h
@@ -46,4 +47,3 @@
 .\object\od.o: ..\Source\Eeprom\Porting\flash_interface.h
 .\object\od.o: ..\Source\com_can.h
 .\object\od.o: ..\Source\version.h
-.\object\od.o: ..\Source\config_recovery.h

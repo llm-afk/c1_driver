@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "torque_calib.h"
 
 #define VERSION_MAJOR       1U
 #define VERSION_MINOR       33U
@@ -48,6 +49,14 @@ typedef struct {
     uint16_t heartbeat_producer_time;     // [ms]      [UINT16] (0~65535)                                       Update After Power Recycle
     uint16_t heartbeat_consumer_time;     // [ms]      [UINT16] (0~65535)                                       Update After Power Recycle
 
+    uint32_t sn_s0;
+    uint32_t sn_s1;
+    uint32_t sn_s2;
+    uint32_t sn_s3;
+    uint32_t sn_s4;
+    uint32_t sn_s5;
+    uint32_t sn_s6;
+
     uint16_t motor_pp;
     float    motor_r;
     float    motor_l_d;
@@ -60,6 +69,7 @@ typedef struct {
     float    elec_gear;
     float    load_inertia;
     float    torque_limit;
+    float    peak_iq_current;
     float    over_current_level;
     float    over_load_dpp_level;
     float    over_voltage_level;
@@ -100,5 +110,30 @@ uint8_t OD_read(uint16_t idx, uint8_t *data);
 uint8_t OD_write_1(uint16_t idx, uint8_t *data);
 uint8_t OD_write_2(uint16_t idx, uint8_t *data);
 uint8_t OD_write_4(uint16_t idx, uint8_t *data);
+
+
+// Enum defining all supported hardware branches
+typedef enum {
+    BRANCH_UNKNOWN = 0,
+    BRANCH_C2_NEW,
+    BRANCH_C2_PRO,
+    BRANCH_C2_PRO_XINZHI,
+    BRANCH_A2,
+    BRANCH_A2_XINZHI,
+    BRANCH_MAX
+} eBranchType;
+
+// Global parameters that differ across branches
+extern eBranchType g_current_branch;
+extern float g_i_scale;
+extern float g_encoder_calib_current;
+extern float g_gear_ratio;
+extern int g_multi_pri_gear;
+extern int g_multi_sec_gear;
+extern const tTorqueCalibPoint* g_torque_calib_table;
+extern uint16_t g_torque_calib_table_len;
+
+// Initialization function
+void HW_Config_Init(eBranchType branch);
 
 #endif

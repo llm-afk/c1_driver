@@ -34,7 +34,7 @@ tMotorControl MotorControl = {
     .is_bootup = false,
     .BusVoltage = 24.0f,
 };
-extern uint32_t multi_check_flag;
+
 static void operation_mode_reset(void);
 static void enter_state(void);
 static void exit_state(void);
@@ -43,8 +43,6 @@ static void profile_velocity_execute(void);
 static void profile_torque_execute(void);
 static void interp_position_execute(void);
 static void servo_loop(void);
-static inline void position_ctrl_loop(void);
-static inline void velocity_ctrl_loop(void);
 static inline void current_ctrl_loop(void);
 static inline void set_phase_voltage(float Valpha, float Vbeta);
 
@@ -63,7 +61,7 @@ double poly_eval(const double *coef, int n, double x) {
 }
 
 // ========== ?? -> ?? ==========
-// coef: ???????(??->??????)
+// coef: ----
 // n: ????
 // current: ????
 double current_to_torque(const double *coef, int n, double current) {
@@ -94,22 +92,6 @@ void poly_derivative(const double *coef, double *dcoef, int n) {
     }
 }
 
-double current_to_torque_5(double I) {
-    return 1.14787755 * I
-         - 0.01457983 * I * I
-         + 0.00117647 * I * I * I
-         - 0.0000548105 * I * I * I * I
-         + 0.000000739631 * I * I * I * I * I;
-}
-
-// 力矩 -> 电流 (平均值拟合)
-double torque_to_current_5(double T) {
-    return 0.893926 * T
-         + 0.00578323 * T * T
-         - 0.00113727 * T * T * T
-         + 0.0000785584 * T * T * T * T
-         - 0.00000119598 * T * T * T * T * T;
-}
 void MC_init(void)
 {
     MC_profile_update();
@@ -348,7 +330,6 @@ int MC_set_state(tMCState state)
             break;
         
         case MCS_OPERATION:
-					ERROR_CODE = 0;
             if(ERROR_CODE){
                 return -1;
             }
@@ -362,6 +343,9 @@ int MC_set_state(tMCState state)
             break;
             
         case MCS_ENCODER_CALIB:
+            if(ERROR_IS_SET(ERR_NO_SN)){
+                return -1; // 未授权硬件严禁执行校准
+            }
 //            if(ERROR_CODE & (~ERR_ENC_CALIB)){
 //                return -1;
 //            }
@@ -370,6 +354,7 @@ int MC_set_state(tMCState state)
             mFSM.state_next_ready = 0;
             break;
         case MCS_EX_ENCODER_CHECK:
+        {
 //            if(ERROR_CODE & (~ERR_ENC_CALIB)){
 //                return -1;
 //            }
@@ -379,8 +364,9 @@ int MC_set_state(tMCState state)
 							idx = 0x2002;
 							uint8_t enable_data[4] = {0x01, 0x00,0x00,0x00};
 							OD_write_2(idx, enable_data);
-							multi_check_flag = 1;
+
             break;
+        }
 
         default:
             return -10;
@@ -425,8 +411,8 @@ void MC_reset_home(void)
 void MC_error_reset(void)
 {
     if(ERROR_CODE){
-        
-        ERROR_CODE &= 0xF000;
+        // 只清除可恢复错误，保留硬错误（SN锁、编码器未标定、ADC故障）
+        ERROR_CODE &= (ERR_NO_SN | ERR_ENC_CALIB | ERR_ADC_SELFTEST);
 
         if(ERROR_CODE == 0){
             SW_ERROR_RESET();
@@ -629,9 +615,6 @@ static void profile_velocity_execute(void)
         }
     }
 }
-float tor_out;
-float count_tor = 0;
-
 static void profile_torque_execute(void)
 {
     if(MotorControl.cmd_update){
@@ -639,7 +622,6 @@ static void profile_torque_execute(void)
 
         float t0 = MotorControl.current_set * MOTOR_TORQUE_CONSTANT;
         float t1 = MotorControl.torque_cmd;
-count_tor++;
         MP_trapezoid_torque_calculate(t0, t1, 1e6);
     }
 
@@ -647,7 +629,6 @@ count_tor++;
         float torque;
 				
         MP_trapezoid_torque_execute(&torque);
-				count_tor++;
         MotorControl.current_set = torque / MOTOR_TORQUE_CONSTANT;
     }else{
         SW_TARGET_REACHED_SET();
@@ -702,17 +683,17 @@ static void servo_loop(void)
 
     // Update od valaue
     DC_LINK_VOLTAGE = MotorControl.BusVoltage;
-		double s = (MotorControl.iq_filtered >= 0.0) ? 1.0 : -1.0;
+		float s = (MotorControl.iq_filtered >= 0.0f) ? 1.0f : -1.0f;
 
     if(POLARITY){
 
 //        ACTUAL_TORQUE   = - s*current_to_torque_5(fabsf(MotorControl.iq_filtered));
-                ACTUAL_TORQUE   = - MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
+                ACTUAL_TORQUE   = - IQ_TO_TORQUE(MotorControl.iq_filtered);
 				ACTUAL_VELOCITY = - INTER_TO_USR(Encoder.vel);	
         ACTUAL_POSITION = - INTER_TO_USR(Encoder.shadow_count);
     }else{
 //        ACTUAL_TORQUE   = + s*current_to_torque_5(fabsf(MotorControl.iq_filtered));
-				ACTUAL_TORQUE   = + MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT;
+				ACTUAL_TORQUE   = + IQ_TO_TORQUE(MotorControl.iq_filtered);
 				ACTUAL_VELOCITY = + INTER_TO_USR(Encoder.vel);
 				ACTUAL_POSITION = + INTER_TO_USR(Encoder.shadow_count);
     }
@@ -723,9 +704,9 @@ static void servo_loop(void)
     
     // Protect check ========================================================
     // Over current check
-    if(ABS(MotorControl.Ia) > OVER_CURRENT_LEVEL || ABS(MotorControl.Ib) > OVER_CURRENT_LEVEL || ABS(MotorControl.Ic) > OVER_CURRENT_LEVEL){
-        COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
-    }
+    // if(ABS(MotorControl.Ia) > OVER_CURRENT_LEVEL || ABS(MotorControl.Ib) > OVER_CURRENT_LEVEL || ABS(MotorControl.Ic) > OVER_CURRENT_LEVEL){
+    //     COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
+    // }
 
 //    // Over voltage check
 //    if(DC_LINK_VOLTAGE > OVER_VOLTAGE_LEVEL){
@@ -744,7 +725,7 @@ static void servo_loop(void)
 
             MotorControl.i_bus = MotorControl.mod_d * MotorControl.Id + MotorControl.mod_q * MotorControl.iq_filtered;
             MotorControl.electrical_power = MotorControl.BusVoltage * MotorControl.i_bus;
-            MotorControl.mechanical_power = MotorControl.iq_filtered * MOTOR_TORQUE_CONSTANT * M_2PI * Encoder.vel / ENCODER_CPR_F;  // P = 2�� * Torque * Vel(r/s)
+            MotorControl.mechanical_power = IQ_TO_TORQUE(MotorControl.iq_filtered) * M_2PI * Encoder.vel / ENCODER_CPR_F;  // P = 2�� * Torque * Vel(r/s)
 
             // Operation mode switch
             if(MotorControl.op_mode != OPERATION_MODE){
@@ -788,7 +769,7 @@ static void servo_loop(void)
 #define TWO_PI             6.28318530718f
 
 // 每个编码器计数对应负载端弧度
-#define RAD_PER_COUNT  (TWO_PI / (ENCODER_RESOLUTION * GEAR_RATIO))
+#define RAD_PER_COUNT  (TWO_PI / (ENCODER_RESOLUTION * g_gear_ratio))
 
 // 编码器位置计数 -> 负载端角度 (rad)
 float encoder_position_to_rad(int32_t pos_count) {
@@ -1076,14 +1057,6 @@ extern	uint16_t init_ex_offset;
 extern int raw_encoder;
 extern float Real_Velocity;
 extern float Velocity_Filtered;
-extern float recv_tor ;
-
-  float a = 3.14;
-  float f = 0.2;
-  float c = 0.0;
-  float kp = 100;
-  float kd = 1;
-  double       t_diff = 0.0;
 
 // Free loop
 void MC_low_priority_task(void)
@@ -1100,8 +1073,15 @@ void MC_low_priority_task(void)
     // 100Hz
     if(get_ms_since(tick_100) >= 10){
         tick_100 = get_tick();
+
+        // // Dual Encoder fault check (0.1 rad tolerance ~ 5.7 deg on inner shaft)
+        // uint16_t enc_fault = ENCODER_slip_check(0.1f);
+        // if(enc_fault != 0){
+        //     COM_CAN_report_err((tErrorCode)enc_fault);
+        // }
+
 				if(ERROR_CODE && !(ERROR_CODE & ERR_HEARTBEAT_TIMEOUT)){
-					MC_error_reset();
+					//MC_error_reset();
 				}
         // Zero speed check
         if(ABS(INTER_TO_USR(Encoder.vel)) < VELOCITY_THRESHOLD_WINDOW){
@@ -1119,13 +1099,13 @@ void MC_low_priority_task(void)
 
         // drv over temperature check
         DRV_TEMPERATURE = SOC_read_drv_temp();
-        if(DRV_TEMPERATURE > 85){
+        if(DRV_TEMPERATURE > OVER_TEMP_DRV_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_DRV);
         }
         
         // motor over temperature check
         MOTOR_TEMPERATURE = get_ntc_temperature();
-        if(MOTOR_TEMPERATURE > 150){
+        if(MOTOR_TEMPERATURE > OVER_TEMP_MOTOR_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_MOTOR);
         }
         
@@ -1134,7 +1114,7 @@ void MC_low_priority_task(void)
         if(over_torque > 0){
             over_torque_dpp += over_torque;
             if(over_torque_dpp > OVER_LOAD_DPP_LEVEL){
-                COM_CAN_report_err(ERR_OVER_LOAD);
+                //COM_CAN_report_err(ERR_OVER_LOAD);
             }
         }else{
             over_torque_dpp = 0;
@@ -1208,64 +1188,33 @@ void MC_low_priority_task(void)
 }
 
 
-double torque_to_current_poly5(double torque) {
-    double T2 = torque * torque;
-    double T3 = T2 * torque;
-    double T4 = T3 * torque;
-    double T5 = T4 * torque;
-    return 0.998154395 * torque
-         - 0.0126781172 * T2
-         + 0.00102301892 * T3
-         - 0.0000476612831 * T4
-         + 0.000000643157541 * T5;
-}
-
-
 static inline void motor_mit_control(void)
 {
+    if(ERROR_CODE & ERR_NO_SN) {
+        MotorControl.current_set = 0;
+        return; // 未授权硬件严禁执行 MIT 运算和发力
+    }
 
-//	MotorControl.raw_pos = encoder_position_to_rad(Encoder.shadow_count);
-//		MotorControl.raw_vel = encoder_speed_to_rad_per_sec(Encoder.vel);
-////	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
 
-//		pos_err = (MotorControl.pos_set - encoder_position_to_rad(Encoder.shadow_count))/1.0;
-//		vel_err = (MotorControl.velocity_set - encoder_speed_to_rad_per_sec(Encoder.vel))/1.0;
-//	
 	MotorControl.raw_pos = raw_rad_data;
 		MotorControl.raw_vel = Velocity_Filtered;
-//	MotorControl.raw_tor = encoder_position_to_rad(Encoder.shadow_count);
-//	t_diff+= 0.001;
-// MotorControl.pos_set = (a * sin(2 * 3.14 * f * t_diff) + c);
-// MotorControl.velocity_set = (2 * 3.14 * f * a * cos(2 * 3.14 * f * t_diff));
-		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0;
-		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0;
+
+		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0f;
+		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0f;
 	
-//		  tau_l =
-//      kp * pos_err +
-//        kd * vel_err + MotorControl.current_mit;  // �?前馈力矩
-//		
+
 	  tau_l =
       MotorControl.Kp * pos_err +
         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
-		tau_l = CLAMP(tau_l, -30, +30);
-		    double s = (tau_l >= 0.0) ? 1.0 : -1.0;
-
-//			MotorControl.current_set = tau_l / GEAR_RATIO;  // 如果不考虑效率
-//			head_tor = MotorControl.current_set;
-//		MotorControl.current_set = torque_to_current(coef5, dcoef5, n5, 24.5);
-//		MotorControl.current_set = s*torque_to_current_5( fabsf(tau_l));
-
-		MotorControl.current_set = tau_l / (MOTOR_TORQUE_CONSTANT);
+		tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
+		float iq_target = TORQUE_TO_IQ(tau_l);
+		iq_target = CLAMP(iq_target, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
+		MotorControl.current_set = iq_target;
 		
 //		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
 
 
 }
-float encoder_raw;
-float encoder_one;
-
-float encoder_two;
-uint32_t count_tor_test = 0;
 // 20KHz
 void MC_high_priority_task(void)
 {
@@ -1305,36 +1254,11 @@ void MC_high_priority_task(void)
     MotorControl.iq_filtered = 0.2f * MotorControl.Iq + 0.8f * MotorControl.iq_filtered;
 
     // 2KHz
-    if(tick == 0){
-				EX_ENCODER_VALUE = ENCODER_EX_read();
-//count_tor_test ++;
-//				encoder_raw = Encoder.shadow_count;
-//				encoder_one = Encoder.raw;
-//				encoder_two = EX_ENCODER_VALUE;
-//			if(count_tor_test %2 == 0){
-			if(multi_check_flag){
-				check_ex_encoder();
-			}
-				motor_mit_control();
-
+    if(tick == 0)
+    {
+        EX_ENCODER_VALUE = ENCODER_EX_read();
+        motor_mit_control();
         servo_loop();
-//			}
-
-
-    }
-
-    // 2KHz
-    if(tick == 1){
-//        if(MotorControl.enabled_loop & ENABLED_LOOP_POSITION){
-//            position_ctrl_loop();
-//        }
-    }
-
-    // 4KHz
-    if(tick == 2 || tick == 7){
-//        if(MotorControl.enabled_loop & ENABLED_LOOP_VELOCITY){
-//            velocity_ctrl_loop();
-//        }
     }
 
     // 20KHz
@@ -1343,43 +1267,11 @@ void MC_high_priority_task(void)
     }
 }
 
-static inline void position_ctrl_loop(void)
-{
-    const float pos_error = (float)(MotorControl.position_set - Encoder.shadow_count);
-    float out = pos_error * MotorControl.PosGain + MotorControl.velocity_ff;
-    MotorControl.velocity_set = CLAMP(out, -MOTOR_RATED_VELOCITY, +MOTOR_RATED_VELOCITY);
-    
-    // Following error update & check
-    ACTUAL_FOLLOWING_ERROR = INTER_TO_USR(pos_error);
-    if(POLARITY){
-        ACTUAL_FOLLOWING_ERROR = -ACTUAL_FOLLOWING_ERROR;
-    }
-    if(FOLLOWING_ERROR_TIME){
-        if(ABS(ACTUAL_FOLLOWING_ERROR) > FOLLOWING_ERROR_WINDOW){
-            if(MotorControl.FollowingErrorTick == 0){
-                MotorControl.FollowingErrorTick = get_tick();
-            }else{
-                if(get_ms_since(MotorControl.FollowingErrorTick) >= FOLLOWING_ERROR_TIME){
-                    COM_CAN_report_err(ERR_FOLLOWING_ERROR);
-                }
-            }
-        }else{
-            MotorControl.FollowingErrorTick = 0;
-        }
-    }
-}
-
-static inline void velocity_ctrl_loop(void)
-{
-    const float current_limit = TORQUE_LIMIT / MOTOR_TORQUE_CONSTANT;
-    const float vel_error = (MotorControl.velocity_set - Encoder.vel) * M_2PI / ENCODER_CPR_F;    // count/s -> rad/s
-    MotorControl.current_set = PI_compute_serial(&MotorControl.PID_vel, vel_error, -current_limit, current_limit, -current_limit, current_limit, MotorControl.current_ff);
-}
-
 static inline void current_ctrl_loop(void)
 {
     float iq_set = MotorControl.current_set;
 //    float iq_set = MotorControl.current_mit;
+    iq_set = CLAMP(iq_set, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
 
     // Current ctrl
     float Vd = PI_compute_serial(&MotorControl.PID_Id,        - MotorControl.id_filtered, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, 0);

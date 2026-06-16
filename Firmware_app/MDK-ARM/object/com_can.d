@@ -36,10 +36,11 @@
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\com_can.o: ..\Source\od.h
+.\object\com_can.o: ..\Source\torque_calib.h
 .\object\com_can.o: ..\Source\motor_ctrl.h
 .\object\com_can.o: ..\Source\pid.h
 .\object\com_can.o: ..\Source\util.h
-.\object\com_can.o: ..\Source\od.h
 .\object\com_can.o: ..\Source\dfu.h
 .\object\com_can.o: ..\Source\fifo_buffer.h
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

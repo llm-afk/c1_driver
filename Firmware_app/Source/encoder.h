@@ -3,7 +3,7 @@
 
 #include "motor_ctrl.h"
 
-#define ENCODER_CALIB_CURRENT   2.0f
+#include "od.h"
 #define ENCODER_PLL_BANDWIDTH   1500.0f     // rad/s
 #define ENCODER_PLL_DT          CURRENT_CTRL_PERIOD
 
@@ -13,7 +13,7 @@
 #define ENCODER_CPR_F           ((float)ENCODER_CPR)
 #define ENCODER_CPR_DIV         (ENCODER_CPR >> 1)
 
-#define CALIB_LUT_BITS          (7)
+#define CALIB_LUT_BITS          (9)
 #define ENCODER_OFFSET_LUT_NUM  (1<<CALIB_LUT_BITS)
 #define SAMPLES_PER_PPAIR       128U
 
@@ -33,7 +33,7 @@ typedef struct {
     int32_t encoder_ex_offset;
     int32_t encoder_reverse;
     int32_t encoder_offset;
-    int32_t encoder_offset_lut[ENCODER_OFFSET_LUT_NUM];
+    int16_t encoder_offset_lut[ENCODER_OFFSET_LUT_NUM];
     uint32_t crc;
 } tEncoderConfig;
 
@@ -70,7 +70,8 @@ void ENCODER_calib_end(void);
 void ENCODER_calib_loop(float dt);
 float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time_us);
 
-bool check_ex_encoder(void);
+//uint16_t ENCODER_slip_check(float tolerance_rad);
+
 int32_t ENCODER_EX_read(void);
 int32_t ENCODER_read(void);
 void ENCODER_loop(void);

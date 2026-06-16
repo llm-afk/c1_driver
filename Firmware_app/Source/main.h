@@ -62,13 +62,13 @@ static inline void LED_ACT_TOGGLE(void)
 #define BOOTLOADER_ADDR      ((uint32_t) (0x8000000 + 90 * FLASH_PAGE_SIZE)) // Page 90
 #define BOOTLOADER_MAX_SIZE  ((uint32_t) (25 * FLASH_PAGE_SIZE))             // 25KB
 
-// 1 KB
+// 2 KB
 #define ENCODER_CALIB_PAGE			(115)
-#define ENCODER_CALIB_PAGE_COUNT  	(1)
+#define ENCODER_CALIB_PAGE_COUNT  	(2)
 
-// 12 KB
-#define EEPROM_PAGE					(116)
-#define EEPROM_PAGE_COUNT  			(12)
+// 11 KB
+#define EEPROM_PAGE					(117)
+#define EEPROM_PAGE_COUNT  			(11)
 
 /* Exported functions prototypes ---------------------------------------------*/
 static inline void watch_dog_feed(void) { FWDGT_CTL = FWDGT_KEY_RELOAD; }

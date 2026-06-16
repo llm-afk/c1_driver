@@ -372,12 +372,16 @@ static void WATCH_DOG_init(void)
     }
 
     /* confiure FWDGT counter clock: 40KHz(IRC40K) / 32 = 5000 Hz */
-    fwdgt_config(50, FWDGT_PSC_DIV8); // 10 ms
+    fwdgt_config(1000, FWDGT_PSC_DIV8); // 200 ms
 }
 
 static void LED_act_loop(void);
 static uint8_t mNodeID;
 int calibration_offset_ret = 0;
+
+volatile uint8_t  g_need_reboot = 0;
+volatile uint32_t g_reboot_tick = 0;
+
 int main(void)
 {
 	
@@ -437,6 +441,11 @@ int main(void)
         COM_CAN_loop();
         MC_low_priority_task();
         
+        if (g_need_reboot && get_ms_since(g_reboot_tick) > 100) {
+            __set_FAULTMASK(1);
+            NVIC_SystemReset();
+        }
+
         if(get_ms_since(tick) >= 2){
             tick = get_tick();
             watch_dog_feed();

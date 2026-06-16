@@ -71,19 +71,26 @@
 #define PLOT_CTRL                           ODObjs.plot_ctrl
 
 typedef enum {
-    ERR_OVER_VOLTAGE            = 0x0001,
-    ERR_UNDER_VOLTAGE           = 0x0002,
-    ERR_FOLLOWING_ERROR         = 0x0004,
+    ERR_OVER_VOLTAGE            = 0x0001, // 失效
+    ERR_UNDER_VOLTAGE           = 0x0002, // 失效
+    ERR_FOLLOWING_ERROR         = 0x0004, // 失效
     ERR_OVER_TEMP_DRV           = 0x0008,
     ERR_OVER_TEMP_MOTOR         = 0x0010,
-    ERR_OVER_CURRENT_SOFT       = 0x0020,
-    ERR_OVER_LOAD               = 0x0040,
+    ERR_OVER_CURRENT_SOFT       = 0x0020, // 失效
+    ERR_OVER_LOAD               = 0x0040, // 失效
     ERR_HEARTBEAT_TIMEOUT       = 0x0080,
-		ERR_MULTI_CHECK_ERROR       = 0x0100,
-
+    ERR_MULTI_CHECK_ERROR       = 0x0100, // 失效
+    ERR_NO_SN                   = 0x0200,
+    ERR_ENC_MISSING             = 0x0400,
+    ERR_ENC_SLIP                = 0x0800,
     ERR_ENC_CALIB               = 0x4000,
     ERR_ADC_SELFTEST            = 0x8000,
 } tErrorCode;
+
+/* ─── ERROR_CODE 操作宏 ─── */
+#define ERROR_SET(err)        do { ERROR_CODE |= (err);                } while(0)
+#define ERROR_CLR(err)        do { ERROR_CODE &= (uint16_t)(~(err));   } while(0)
+#define ERROR_IS_SET(err)     ((ERROR_CODE & (err)) != 0)
 
 
 //*****************************************************************************
@@ -130,9 +137,16 @@ typedef enum {
 // Motor param
 #define MOTOR_RATED_TORQUE         (MOTOR_RATED_CURRENT * MOTOR_TORQUE_CONSTANT)
 
+// Peak IQ Current
+#define PEAK_IQ_CURRENT                     ODObjs.peak_iq_current
+
+// Torque to IQ mapping
+#define TORQUE_TO_IQ(torque)                torque_to_iq(torque)
+#define IQ_TO_TORQUE(iq)                    iq_to_torque(iq)
+
 //#define MOTOR_BACK_EMF_CONSTANT     11.0f     // [Vpk_LL/krpm]
-//#define MOTOR_FLUX_LINKAGE          (ONE_BY_SQRT3 * MOTOR_BACK_EMF_CONSTANT * 60.0f / (1000.0f * MOTOR_POLE_PAIRS * M_2PI))     // [Wb]     ��pm = (1/��3)(Ke/(1000P))*(60/2��)
-//#define MOTOR_TORQUE_CONSTANT       (1.5f * MOTOR_POLE_PAIRS * MOTOR_FLUX_LINKAGE)                                              // [Nm/A]   ��pm = (2/3)*(Kt/P)
+//#define MOTOR_FLUX_LINKAGE          (ONE_BY_SQRT3 * MOTOR_BACK_EMF_CONSTANT * 60.0f / (1000.0f * MOTOR_POLE_PAIRS * M_2PI))     // [Wb]     λpm = (1/√3)(Ke/(1000P))*(60/2π)
+//#define MOTOR_TORQUE_CONSTANT       (1.5f * MOTOR_POLE_PAIRS * MOTOR_FLUX_LINKAGE)                                              // [Nm/A]   λpm = (2/3)*(Kt/P)
 
 //#define CURRENT_CTRL_BW_HZ          800
 #define CURRENT_CTRL_BW_HZ          350
@@ -148,7 +162,7 @@ typedef enum {
 #define POSITION_CTRL_PERIOD        (1.0f / POSITION_CTRL_FREQUENCY)
 #define SERVO_CTRL_FREQUENCY        (CURRENT_MEASURE_HZ / 10)
 #define SERVO_CTRL_PERIOD           (1.0f / SERVO_CTRL_FREQUENCY)
-#define GEAR_RATIO         12.0f
+//#define GEAR_RATIO         12.0f
 
 // Control loop define
 #define ENABLED_LOOP_NONE	        0

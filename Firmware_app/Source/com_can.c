@@ -64,13 +64,13 @@ void COM_CAN_report_err(tErrorCode err)
 
     SW_ERROR_SET();
 
-    if(ERROR_CODE & err){
+    if(ERROR_IS_SET(err)){
         return;
     }
 
     ENTER_CRITICAL();
 
-    ERROR_CODE |= err;
+    ERROR_SET(err);
 
     // Report error code
     CanFrame tx_frame;
@@ -144,22 +144,6 @@ static inline void send_to_host_or_enqueue(CanFrame *tx_frame)
         fifoBuf_putData(tx_fifo, tx_frame, sizeof(CanFrame));
     }
 }
-float recv_tor = 0.0f;
-extern float encoder_raw;
-extern float encoder_one;
-
-extern float encoder_two;
-uint8_t enable_data[8] = {0x2b, 0x02, 0x20, 0x00, 0x01, 0x00, 0x00, 0x00};
-uint8_t mode_data[8] = {0x2f, 0x03, 0x20, 0x00, 0x03, 0x00, 0x00, 0x00};
-uint32_t count_1 = 0;
-extern int16_t multi_test;
-//extern MotionInput input_data;
-extern float test_time;
-extern float test_pos;
-extern uint32_t state_mcs;
-extern uint32_t multi_check_flag;
-extern int32_t in_encoder_turns;
-extern int32_t ex_encoder_turns;
 static void parse_frame(CanFrame *frame)
 {
     switch(GET_MSG_ID(frame->id)){
@@ -213,14 +197,7 @@ static void parse_frame(CanFrame *frame)
             if(GET_NODE_ID(frame->id) != mNodeID) break;
             MC_pdo_profile_velocity(*(float*)&frame->data[0], *(float*)&frame->data[4]);
             break;
-
-//        case MSG_ID_RPDO_3:
-//            if(GET_NODE_ID(frame->id) != mNodeID) break;
-////            MC_pdo_profile_torque(*(float*)&frame->data[0], *(float*)&frame->data[4]);
-////							MotorControl.current_mit = *(float*)&frame->data[0];
-//							recv_tor = *(float*)&frame->data[0];
-//            break;
-
+            
         case MSG_ID_RPDO_4:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
 
@@ -233,175 +210,108 @@ static void parse_frame(CanFrame *frame)
             *(uint16_t*)&frame->data[4] = STATUS_WORD;
             send_to_host_or_enqueue(frame);
             break;
-        case MSG_ID_RPDO_5:{
-					 if(GET_NODE_ID(frame->id) != mNodeID) break;
-								mHeartbeatConsumerTick = get_tick();
+        case MSG_ID_RPDO_5:
+        {
+            if(GET_NODE_ID(frame->id) != mNodeID) break;
+            mHeartbeatConsumerTick = get_tick();
 
-							
-//							if(ERROR_CODE){
-//								frame->id = MSG_ID_EMERGENCY + mNodeID;
-//								frame->id = 8;
-//								for(int i=0; i<8; i++){
-//									frame->data[i] = 0;
-//								}
-//								*(uint16_t*)&frame->data[0] = ERROR_CODE;
-//								send_to_host_or_enqueue(frame);
-//								break;
-//							}
-//            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
-//            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
-					
-					
-//						if( MC_get_state() == MCS_OPERATION){
-					if(!multi_check_flag){
-							MotorControl.pos_set = *(float*)&frame->data[0];
-							MotorControl.velocity_set = *(float*)&frame->data[4];
-							MotorControl.current_mit = *(float*)&frame->data[8];
-							MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
-							MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
-//						}
-					}
-			
-//							MotorControl.velocity_set = input_data.time_current;
-//							MotorControl.current_mit = *(float*)&frame->data[8];
-
-//						MotorControl.pos_set = *(float*)&frame->data[0];
-//						MotorControl.velocity_set = *(float*)&frame->data[4];
-//						MotorControl.current_mit = *(float*)&frame->data[8];
-//						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
-//						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 0.1f);
-
-            // tx msg
+            float target_pos = *(float*)&frame->data[0];
+            float target_vel = *(float*)&frame->data[4];
+            float target_cur = *(float*)&frame->data[8];
+            if(ODObjs.polarity)
+            {
+                target_pos = -target_pos;
+                target_vel = -target_vel;
+                target_cur = -target_cur;
+            }
+            MotorControl.pos_set = target_pos;
+            MotorControl.velocity_set = target_vel;
+            MotorControl.current_mit = target_cur;
+            MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
+            MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
             frame->id = MSG_ID_TPDO_5 + mNodeID;
-						frame->dlc = 16;
-						if(ERROR_CODE){
-							frame->dlc = 20;
-							*(uint16_t*)&frame->data[16] = ERROR_CODE;
+            frame->dlc = 16;
+            if(ERROR_CODE)
+            {
+                frame->dlc = 20;
+                *(uint16_t*)&frame->data[16] = ERROR_CODE;
+            }
 
-						}
-//            *(float*)&frame->data[0] = MotorControl.position_cmd;
-//            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
-//						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
-//				
-						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
-						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
-						*(float*)&frame->data[0] = MotorControl.raw_pos;
-            *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
-						if(multi_check_flag){
-							*(float*)&frame->data[0] = MotorControl.raw_pos;
-							*(float*)&frame->data[4] = ex_encoder_turns;
-							*(float*)&frame->data[8] = in_encoder_turns - ex_encoder_turns; 
-						}
-
-						*(int16_t*)&frame->data[12] = Motor_Temp;
+            int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
+            int16_t Drive_Temp = DRV_TEMPERATURE * 10;
+            float feedback_pos = MotorControl.raw_pos;
+            float feedback_vel = MotorControl.raw_vel;
+            if(ODObjs.polarity)
+            {
+                feedback_pos = -feedback_pos;
+                feedback_vel = -feedback_vel;
+            }
+            *(float*)&frame->data[0] = feedback_pos;
+            *(float*)&frame->data[4] = feedback_vel;
+            *(float*)&frame->data[8] = ACTUAL_TORQUE; 
+            *(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
-//						*(float*)&frame->data[0] = encoder_raw;
-//            *(float*)&frame->data[4] = encoder_one;
-//						*(float*)&frame->data[8] = encoder_two;
+
             send_to_host_or_enqueue(frame);
             break;
-				}
+		}
            
 		case MSG_ID_RPDO_3:
+        {
             if(GET_NODE_ID(frame->id) != mNodeID) break;
-								mHeartbeatConsumerTick = get_tick();
-//							if(1){
-//								uint8_t cs = mode_data[0];
-//                uint16_t idx = *(uint16_t*)&mode_data[1];
-//                uint8_t *data = &mode_data[4];
+            mHeartbeatConsumerTick = get_tick();
 
-//                frame->data[0] = CS_ERR;
+            if( MC_get_state() != MCS_OPERATION)
+            {
+                uint16_t idx = 0x2003;
+                uint8_t data = 3;
+                OD_write_1(idx, &data);
+                idx = 0x2002;
+                uint8_t enable_data[4] = {0x01, 0x00,0x00,0x00};
+                OD_write_2(idx, enable_data);
+            }
+            float target_pos = *(float*)&frame->data[0];
+            float target_vel = *(float*)&frame->data[4];
+            float target_cur = *(float*)&frame->data[8];
+            if(ODObjs.polarity)
+            {
+                target_pos = -target_pos;
+                target_vel = -target_vel;
+                target_cur = -target_cur;
+            }
+            MotorControl.pos_set = target_pos;
+            MotorControl.velocity_set = target_vel;
+            MotorControl.current_mit = target_cur;
+            MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
+            MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
 
-//                if(cs == CS_R){
-//                    OD_read(idx, mode_data);
-//                }else if(cs == CS_W_1){
-//                    OD_write_1(idx, mode_data);
-//                }else if(cs == CS_W_2){
-//                    OD_write_2(idx, mode_data);
-//                }else if(cs == CS_W_4){
-//                    OD_write_4(idx, mode_data);
-//                }
-//							}
-		if( MC_get_state() != MCS_OPERATION){
-							uint16_t idx = 0x2003;
-							uint8_t data = 3;
-							OD_write_1(idx, &data);
-							idx = 0x2002;
-							uint8_t enable_data[4] = {0x01, 0x00,0x00,0x00};
-							OD_write_2(idx, enable_data);
-							count_1 ++;
-						}
-//							
-//							if(1){
-//								uint8_t cs = enable_data[0];
-//                uint16_t idx = *(uint16_t*)&enable_data[1];
-//                uint8_t *data = &enable_data[4];
-
-//                frame->data[0] = CS_ERR;
-
-//                if(cs == CS_R){
-//                    OD_read(idx, enable_data);
-//                }else if(cs == CS_W_1){
-//                    OD_write_1(idx, enable_data);
-//                }else if(cs == CS_W_2){
-//                    OD_write_2(idx, enable_data);
-//                }else if(cs == CS_W_4){
-//                    OD_write_4(idx, enable_data);
-//                }
-//							}
-							
-//							OPERATION_MODE = 1;
-							
-//							if(ERROR_CODE){
-//								frame->id = MSG_ID_EMERGENCY + mNodeID;
-//								frame->id = 8;
-//								for(int i=0; i<8; i++){
-//									frame->data[i] = 0;
-//								}
-//								*(uint16_t*)&frame->data[0] = ERROR_CODE;
-//								send_to_host_or_enqueue(frame);
-//								break;
-//							}
-//            MC_pdo_profile_position(*(float*)&frame->data[0], 1e6);
-//            MC_pdo_profile_velocity(*(float*)&frame->data[4], 1e6);
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 1e6);
-				
-				
-						MotorControl.pos_set = *(float*)&frame->data[0];
-						MotorControl.velocity_set = *(float*)&frame->data[4];
-						MotorControl.current_mit = *(float*)&frame->data[8];
-						MotorControl.Kp = *(uint16_t*)&frame->data[12]/100.0f;
-						MotorControl.Kd = *(uint16_t*)&frame->data[14]/100.0f;
-//            MC_pdo_profile_torque(*(float*)&frame->data[8], 0.1f);
-
-            // tx msg
             frame->id = MSG_ID_TPDO_5 + mNodeID;
-						frame->dlc = 16;
-						if(ERROR_CODE){
-							frame->dlc = 20;
-							*(uint16_t*)&frame->data[16] = ERROR_CODE;
+            frame->dlc = 16;
+            if(ERROR_CODE)
+            {
+                frame->dlc = 20;
+                *(uint16_t*)&frame->data[16] = ERROR_CODE;
+            }
+	
+            int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
+            int16_t Drive_Temp = DRV_TEMPERATURE * 10;
 
-						}
-//            *(float*)&frame->data[0] = MotorControl.position_cmd;
-//            *(float*)&frame->data[4] = MotorControl.velocity_cmd;
-//						*(float*)&frame->data[8] = MotorControl.torque_cmd;				
-////				
-						int16_t Motor_Temp = MOTOR_TEMPERATURE * 10;
-						int16_t Drive_Temp = DRV_TEMPERATURE * 10;
-
-            *(float*)&frame->data[0] = MotorControl.raw_pos;
-            *(float*)&frame->data[4] = MotorControl.raw_vel;
-						*(float*)&frame->data[8] = ACTUAL_TORQUE; 
-							*(int16_t*)&frame->data[12] = Motor_Temp;
+            float feedback_pos = MotorControl.raw_pos;
+            float feedback_vel = MotorControl.raw_vel;
+            if(ODObjs.polarity)
+            {
+                feedback_pos = -feedback_pos;
+                feedback_vel = -feedback_vel;
+            }
+            *(float*)&frame->data[0] = feedback_pos;
+            *(float*)&frame->data[4] = feedback_vel;
+            *(float*)&frame->data[8] = ACTUAL_TORQUE; 
+            *(int16_t*)&frame->data[12] = Motor_Temp;
             *(int16_t*)&frame->data[14] = Drive_Temp;
-//						*(float*)&frame->data[0] = encoder_raw;
-//            *(float*)&frame->data[4] = encoder_one;
-//						*(float*)&frame->data[8] = encoder_two;
+
             send_to_host_or_enqueue(frame);
-            break;						
+            break;		
+        }				
         case MSG_ID_DFU:
             if(GET_NODE_ID(frame->id) != mNodeID) break;
         

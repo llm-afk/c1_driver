@@ -1,9 +1,10 @@
 #include "encoder.h"
+#include "com_can.h"
 #include "util.h"
 #include <string.h>
 #include "motor_ctrl.h"
 #include "flash_interface.h"
-#include "config_recovery.h"
+
 
 tEncoder Encoder = {
     .need_init = 20,
@@ -21,29 +22,7 @@ void ENCODER_init(void)
     uint32_t crc = crc32((uint8_t*)&Encoder.Config, sizeof(tEncoderConfig)-4);
 
     if(crc != Encoder.Config.crc){
-        /*
-         * Current calibration page (115) has no valid data.
-         * Try to recover from old calibration page (100).
-         *
-         * This handles OTA from old-layout firmware where encoder
-         * calibration was stored at page 100 instead of page 115.
-         *
-         * On new-layout devices, page 100 contains bootloader code
-         * and will fail CRC — safe no-op.
-         */
-        if (config_recovery_encoder_calib())
-        {
-            /* Successfully recovered from old location (page 100).
-               Re-read from current location (page 115) which now has
-               the migrated data. */
-            memcpy(&Encoder.Config,
-                   (uint8_t*)(FLASH_BASE + ENCODER_CALIB_PAGE*FLASH_PAGE_SIZE),
-                   sizeof(tEncoderConfig));
-            crc = crc32((uint8_t*)&Encoder.Config, sizeof(tEncoderConfig)-4);
-        }
-
-        if (crc != Encoder.Config.crc)
-        {
+        
             /* Both locations invalid — reset to defaults */
             Encoder.Config.calib_valid = false;
             Encoder.Config.encoder_ex_offset = 0;
@@ -52,13 +31,13 @@ void ENCODER_init(void)
                 Encoder.Config.encoder_offset_lut[i] = 0;
             }
         }
-    }
 }
 
 static void save_encoder_config(void)
 {
-    // Erase
+    // Erase 2 pages because 1040 bytes exceeds the 1024 byte FLASH_PAGE_SIZE
     FI_flash_erase_page(ENCODER_CALIB_PAGE);
+    FI_flash_erase_page(ENCODER_CALIB_PAGE + 1);
     
     // Program
     Encoder.Config.crc = crc32((uint8_t*)&Encoder.Config, sizeof(tEncoderConfig)-4);
@@ -67,6 +46,12 @@ static void save_encoder_config(void)
 
 void ENCODER_calib_start(void)
 {
+    // 每次重新开始校准时，清空上一次可能的磁铁丢失报错
+    if(ERROR_IS_SET(ERR_ENC_MISSING)) 
+    {
+        ERROR_CLR(ERR_ENC_MISSING);
+    }
+
     // Reset calib result
     Encoder.Config.calib_valid = false;
     Encoder.Config.encoder_reverse = 0;
@@ -80,24 +65,32 @@ void ENCODER_calib_start(void)
 
 void ENCODER_calib_end(void)
 {
-
+    // 故意留空：如果校准失败报错了，让红灯一直挂着，直到下次重新校准
 }
-uint32_t multi_check_flag = 0;
+
 void ENCODER_calib_loop(float dt)
 {
     static int count_raw_start;
+    static int32_t in_max = 0;
+    static int32_t in_min = 16383;
+    static int32_t ex_max = 0;
+    static int32_t ex_min = 16383;
     
     const float time = 10.24f;
     const float phase_delta = MOTOR_POLE_PAIRS * M_2PI * dt / time;
     const float sample_time_delta = time / (float)(MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR);
 
     const float t = (float)Encoder.Calib.loop_count * dt;
-    const float voltage = ENCODER_CALIB_CURRENT * MOTOR_PHASE_R;
+    const float voltage = g_encoder_calib_current * MOTOR_PHASE_R;
     
     switch(Encoder.Calib.calib_step){
         case 0: // Init
             Encoder.Calib.phase_set = 0;
             Encoder.Calib.loop_count = 0;
+            in_max = 0;
+            in_min = 16383;
+            ex_max = 0;
+            ex_min = 16383;
             Encoder.Calib.calib_step ++;
             break;
 
@@ -212,6 +205,15 @@ void ENCODER_calib_loop(float dt)
             
         case 8: // Calculate
             {
+                // Missing Magnet Check (threshold set to half a turn = 8192 counts)
+                if((in_max - in_min) < 8192 || (ex_max - ex_min) < 8192) 
+                {
+                    COM_CAN_report_err(ERR_ENC_MISSING);
+                    Encoder.Config.calib_valid = false;
+                    Encoder.Calib.calib_step = 9; // Abort calibration
+                    break;
+                }
+
                 // Calculate average offset
                 int64_t moving_avg = 0;
                 for(int i = 0; i<(MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR); i++){
@@ -224,33 +226,58 @@ void ENCODER_calib_loop(float dt)
                 // FIR and map measurements to lut
                 int window = SAMPLES_PER_PPAIR;
                 int lut_offset = Encoder.Calib.errors[0] * ENCODER_OFFSET_LUT_NUM / ENCODER_CPR;
-                for(int i = 0; i<ENCODER_OFFSET_LUT_NUM; i++){
-                    moving_avg = 0;
-                    for(int j = (-window)/2; j<(window)/2; j++){
-                        int index = i*MOTOR_POLE_PAIRS*SAMPLES_PER_PPAIR/ENCODER_OFFSET_LUT_NUM + j;
-                        if(index<0){
-                            index += (SAMPLES_PER_PPAIR*MOTOR_POLE_PAIRS);
-                        }else if(index>(SAMPLES_PER_PPAIR*MOTOR_POLE_PAIRS-1)){
-                            index -= (SAMPLES_PER_PPAIR*MOTOR_POLE_PAIRS);
-                        }
-                        moving_avg += Encoder.Calib.errors[index];
+                
+                int total_samples = MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR;
+                
+                for(int i = 0; i < ENCODER_OFFSET_LUT_NUM; i++){
+                    // 1. Calculate fractional center index
+                    float center_f = (float)i * total_samples / ENCODER_OFFSET_LUT_NUM;
+                    int center_i = (int)center_f;
+                    float frac = center_f - center_i;
+                    
+                    int64_t moving_avg_floor = 0;
+                    int64_t moving_avg_ceil = 0;
+                    
+                    // 2. Compute sliding window sum for floor and ceil positions
+                    for(int j = (-window)/2; j < (window)/2; j++){
+                        int idx1 = center_i + j;
+                        int idx2 = center_i + 1 + j;
+                        
+                        // Robust bounds wrapping for any array size
+                        while(idx1 < 0) idx1 += total_samples;
+                        while(idx1 >= total_samples) idx1 -= total_samples;
+                        
+                        while(idx2 < 0) idx2 += total_samples;
+                        while(idx2 >= total_samples) idx2 -= total_samples;
+                        
+                        moving_avg_floor += Encoder.Calib.errors[idx1];
+                        moving_avg_ceil  += Encoder.Calib.errors[idx2];
                     }
-                    moving_avg = moving_avg/window;
+                    
+                    // 3. Linear interpolation
+                    float avg_floor_f = (float)moving_avg_floor / window;
+                    float avg_ceil_f  = (float)moving_avg_ceil / window;
+                    int64_t moving_avg = (int64_t)(avg_floor_f * (1.0f - frac) + avg_ceil_f * frac);
+                    
+                    // 4. Map to final LUT index with robust wrapping
                     int lut_index = lut_offset + i;
-                    if(lut_index > (ENCODER_OFFSET_LUT_NUM-1)){
+                    while(lut_index >= ENCODER_OFFSET_LUT_NUM) {
                         lut_index -= ENCODER_OFFSET_LUT_NUM;
                     }
+                    while(lut_index < 0) {
+                        lut_index += ENCODER_OFFSET_LUT_NUM;
+                    }
+                    
                     Encoder.Config.encoder_offset_lut[lut_index] = moving_avg - Encoder.Config.encoder_offset;
                 }
 
-                ERROR_CODE = 0;
+                ERROR_CLR(ERR_ENC_CALIB);
                 SW_ERROR_RESET();
                 Encoder.Config.calib_valid = true;
                 
                 save_encoder_config();
                 
                 MC_set_state(MCS_IDLE);
-//								multi_check_flag = 1;
                 Encoder.Calib.calib_step ++;
             }
             break;
@@ -259,166 +286,16 @@ void ENCODER_calib_loop(float dt)
             break;
     }
     
+    // Update extents for missing magnet detection
+    if(Encoder.raw > in_max) in_max = Encoder.raw;
+    if(Encoder.raw < in_min) in_min = Encoder.raw;
+    
+    int32_t ex_raw = ENCODER_EX_read();
+    if(ex_raw > ex_max) ex_max = ex_raw;
+    if(ex_raw < ex_min) ex_min = ex_raw;
+
     Encoder.Calib.loop_count ++;
 }
-
-//void ENCODER_calib_loop(float dt)
-//{
-//    const float time = 10.24f;
-//    const float phase_delta = MOTOR_POLE_PAIRS * M_2PI * dt / time;
-//    const float sample_time_delta = time / (float)(MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR);
-
-//    const float t = (float)Encoder.Calib.loop_count * dt;
-//    const float voltage = ENCODER_CALIB_CURRENT * MOTOR_PHASE_R;
-
-//    switch(Encoder.Calib.calib_step){
-//        case 0: // Init
-//            Encoder.Calib.phase_set = 0;
-//            Encoder.Calib.loop_count = 0;
-//            Encoder.Calib.calib_step ++;
-//            break;
-
-//        case 1: // Lock
-//            MC_modulate((voltage * t / 2.0f), 0, Encoder.Calib.phase_set);
-//            if (t >= 2.0f){
-//                Encoder.Calib.calib_step ++;
-//            }
-//            break;
-//            
-//        case 2: // CW dumy
-//            Encoder.Calib.phase_set += phase_delta;
-//            MC_modulate(voltage, 0, Encoder.Calib.phase_set);
-//            if(Encoder.Calib.phase_set >= M_2PI){
-//                Encoder.Calib.phase_set = 0;
-//                Encoder.Calib.loop_count = 0;
-//                Encoder.Calib.sample_count = 0;
-//                Encoder.Calib.next_sample_time = 0;
-//                Encoder.Calib.calib_step ++;
-//                
-//                for(int i=0; i<10; i++){
-//                    Encoder.Config.encoder_ex_offset = ENCODER_EX_read();
-//                    if(Encoder.Config.encoder_ex_offset != -1){
-//                        break;
-//                    }
-//                }
-//            }
-//            break;
-
-//        case 3: // CW loop
-//            if(Encoder.Calib.sample_count < (MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR)){
-//                if(t >= Encoder.Calib.next_sample_time){
-//                    Encoder.Calib.next_sample_time += sample_time_delta;
-//                    
-//                    int count_ref = (Encoder.Calib.phase_set * ENCODER_CPR_F) / (M_2PI * (float)MOTOR_POLE_PAIRS);
-//                    int error = Encoder.raw - count_ref;
-//                    error += ENCODER_CPR * (error<0);
-//                    Encoder.Calib.errors[Encoder.Calib.sample_count] = error;
-//                    
-//                    Encoder.Calib.sample_count ++;
-//                }
-//                
-//                Encoder.Calib.phase_set += phase_delta;
-//            }else{
-//                Encoder.Calib.sample_count --;
-//                Encoder.Calib.loop_count = 0;
-//                Encoder.Calib.calib_step ++;
-//                break;
-//            }
-//            MC_modulate(voltage, 0, Encoder.Calib.phase_set);
-//            break;
-//            
-//        case 4: // CW dumy
-//            if(Encoder.Calib.loop_count > (0.5f/dt)){
-//                Encoder.Calib.loop_count = 0;
-//                Encoder.Calib.calib_step ++;
-//                break;
-//            }
-//            Encoder.Calib.phase_set += phase_delta;
-//            MC_modulate(voltage, 0, Encoder.Calib.phase_set);
-//            break;
-//        
-//        case 5: // CCW dumy
-//            if(Encoder.Calib.loop_count > (0.5f/dt)){
-//                Encoder.Calib.loop_count = 0;
-//                Encoder.Calib.next_sample_time = 0;
-//                Encoder.Calib.calib_step ++;
-//                break;
-//            }
-//            Encoder.Calib.phase_set -= phase_delta;
-//            MC_modulate(voltage, 0, Encoder.Calib.phase_set);
-//            break;
-//        
-//        case 6: // CCW loop
-//            if(Encoder.Calib.sample_count >= 0){
-//                if(t > Encoder.Calib.next_sample_time){
-//                    Encoder.Calib.next_sample_time += sample_time_delta;
-//                    
-//                    int count_ref = (Encoder.Calib.phase_set * ENCODER_CPR_F) / (M_2PI * (float)MOTOR_POLE_PAIRS);
-//                    int error = Encoder.raw - count_ref;
-//                    error += ENCODER_CPR * (error<0);
-//                    Encoder.Calib.errors[Encoder.Calib.sample_count] = (Encoder.Calib.errors[Encoder.Calib.sample_count] + error) / 2;
-
-//                    Encoder.Calib.sample_count --;
-//                }
-//                
-//                Encoder.Calib.phase_set -= phase_delta;
-//            }else{
-//                Encoder.Calib.calib_step ++;
-//                break;
-//            }
-//            MC_modulate(voltage, 0, Encoder.Calib.phase_set);
-//            break;
-//            
-//        case 7: // Calculate
-//            {
-//                // Calculate average offset
-//                int64_t moving_avg = 0;
-//                for(int i = 0; i<(MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR); i++){
-//                    moving_avg += Encoder.Calib.errors[i];
-//                }
-//                Encoder.Config.encoder_offset = moving_avg/(MOTOR_POLE_PAIRS * SAMPLES_PER_PPAIR);
-//                
-//                //DEBUG("ENCODER_OFFSET: %d\n", Encoder.Config.encoder_offset);
-//                
-//                // FIR and map measurements to lut
-//                int window = SAMPLES_PER_PPAIR;
-//                int lut_offset = Encoder.Calib.errors[0] * ENCODER_OFFSET_LUT_NUM / ENCODER_CPR;
-//                for(int i = 0; i<ENCODER_OFFSET_LUT_NUM; i++){
-//                    moving_avg = 0;
-//                    for(int j = (-window)/2; j<(window)/2; j++){
-//                        int index = i*MOTOR_POLE_PAIRS*SAMPLES_PER_PPAIR/ENCODER_OFFSET_LUT_NUM + j;
-//                        if(index<0){
-//                            index += (SAMPLES_PER_PPAIR*MOTOR_POLE_PAIRS);
-//                        }else if(index>(SAMPLES_PER_PPAIR*MOTOR_POLE_PAIRS-1)){
-//                            index -= (SAMPLES_PER_PPAIR*MOTOR_POLE_PAIRS);
-//                        }
-//                        moving_avg += Encoder.Calib.errors[index];
-//                    }
-//                    moving_avg = moving_avg/window;
-//                    int lut_index = lut_offset + i;
-//                    if(lut_index > (ENCODER_OFFSET_LUT_NUM-1)){
-//                        lut_index -= ENCODER_OFFSET_LUT_NUM;
-//                    }
-//                    Encoder.Config.encoder_offset_lut[lut_index] = moving_avg - Encoder.Config.encoder_offset;
-//                }
-
-//                ERROR_CODE = 0;
-//                SW_ERROR_RESET();
-//                Encoder.Config.calib_valid = true;
-//                
-//                save_encoder_config();
-//                
-//                MC_set_state(MCS_IDLE);
-//                Encoder.Calib.calib_step ++;
-//            }
-//            break;
-
-//        default:
-//            break;
-//    }
-//    
-//    Encoder.Calib.loop_count ++;
-//}
 
 int32_t ENCODER_EX_read(void)
 {
@@ -470,8 +347,8 @@ float raw_rad_data = 0.0f;
 	uint16_t init_ex_offset;
 int raw_encoder = 0;
 float Real_Velocity;
-static const int32_t vel_average_filter_num = 32;
-float vel_vec[vel_average_filter_num] = {0.0f};
+#define VEL_AVERAGE_FILTER_NUM 32
+float vel_vec[VEL_AVERAGE_FILTER_NUM] = {0.0f};
 float Velocity_Filtered;
 
 
@@ -483,9 +360,9 @@ float Velocity_Filtered;
 #define TWO_PI 6.28318530718f 
 #define US_TO_S_FACTOR 1000000.0f 
 
-// --- ??/???? ---
+// --- ---- ---
 // ????????(????)
-#define MAX_PHYSICAL_SPEED_RADS 32.0f*12 
+#define MAX_PHYSICAL_SPEED_RADS 1000000.0f 
 
 // --- ?????? ---
 #define MAF_FILTER_SIZE 32 
@@ -573,9 +450,9 @@ float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time
     
     return filtered_angular_velocity;
 }
-int16_t multi_test = 0;
+//int16_t multi_test = 0;
 
-int32_t Get_Multi_Turns(){
+// int32_t Get_Multi_Turns(){
 //	int16_t Multi_Turns;
 
 //	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
@@ -602,71 +479,38 @@ int32_t Get_Multi_Turns(){
 //		init_ex = encoder_two;
 //		Multi_Turns = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 18) / 65536) : floor(((uint32_t)Mech_Differ * 18) / 65536) - 18;
 //	}
-	return multi_test;
-}
-int32_t multi_turn_check_111 = 0;
-bool init_multi = true;
+// 	return multi_test;
+// }
 
-//void multi_encoder(void){
-//	static	int16_t Multi_Turns;
+//int32_t multi_turn_check_111 = 0;
+//bool init_multi = true;
 
-//	static uint16_t Mech_Angle_Old;
-//	static float Real_Angle_Old;
-//	uint16_t Mech_Angle_Err = IN_ENCODER_OFFSET;
-//	uint16_t Mech_Angle_Side_Err = EX_ENCODER_OFFSET;
-//	int encoder_one = Encoder.raw;
-//	uint16_t Mech_Angle = encoder_one;
-//	
 
-//	
-//	if(init_multi){
-//		Multi_Turns = Get_Multi_Turns();
-//	}
-//	init_multi = false;
-//	// if(init_multi){
-//		//  Encoder.shadow_count += Multi_Turns*ENCODER_RESOLUTION;
-//		// Encoder.shadow_count -= Mech_Angle_Err;
-//	// 					}
-//	// 					multi_debug = (Mech_Differ <= 32767 ) ? floor(((uint32_t)Mech_Differ * 31) / 65536) : floor(((uint32_t)Mech_Differ * 31) / 65536) - 31;
-//	// //					Multi_Turns = Multi_Turns % 12;
-
-//	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) > 12000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) < 4000) Multi_Turns += 1;
-//	if(((Mech_Angle_Old -  Mech_Angle_Err )& 0x3FFF) < 4000 && ((Mech_Angle - Mech_Angle_Err) & 0x3FFF) > 12000) Multi_Turns -= 1;
-//	multi_turn_check_111 = Multi_Turns;
-//	Mech_Angle_Old = Mech_Angle;
-//	float Real_Angle = ((float)((int)Multi_Turns) * M_2PI + (float)((uint16_t)((Mech_Angle << 2) - (Mech_Angle_Err << 2))) / 10430.4f)/GEAR_RATIO; // Real Angle in rad.
-//	Real_Velocity = (Real_Angle - Real_Angle_Old) / ENCODER_PLL_DT;
-//	Real_Angle_Old = Real_Angle;
-//	float vel_sum = Real_Velocity;
-//			for (int i = 1; i < vel_average_filter_num; i++)
-//			{
-//				vel_vec[vel_average_filter_num - i] = vel_vec[vel_average_filter_num - i - 1];
-//				vel_sum += vel_vec[vel_average_filter_num - i];
-//			}
-//			vel_vec[0] = Real_Velocity;
-//		float	Real_Velocity_Filtered = vel_sum / (float)vel_average_filter_num;
-//		raw_rad_data = Real_Angle;
-////Velocity_Filtered = Real_Velocity_Filtered;
-
-//}
-
-	int32_t Multi_Turns;
+//int32_t Multi_Turns;
 
 void multi_encoder(void)
 {
     // 计算上电零点偏移
     static uint16_t init = 0;
     static float pos_fast_offset = 0.0f; // 转子上电瞬间相对零点的偏移(rad)
-    const int pri_gear = 17; // 主编码器齿轮数
-    const int sec_gear = 18; // 从编码器齿轮数
+
     if(init == 0)
     {
         init = 1;
-        int16_t enc_err_config = (IN_ENCODER_OFFSET - EX_ENCODER_OFFSET) << 2;
-        int16_t enc_err_mes = (Encoder.raw - ENCODER_EX_read()) << 2;
-        int16_t enc_err = enc_err_mes - enc_err_config; 
+        int32_t in_off = IN_ENCODER_OFFSET;
+        int32_t ex_off = EX_ENCODER_OFFSET;
+        int32_t ex_raw = ENCODER_EX_read();
         
-        pos_fast_offset = enc_err / ((((float)sec_gear - (float)pri_gear) / (float)sec_gear) * 65536.0f) * M_2PI; // 计算出转子上电瞬间相对零点的偏移
+        if (ODObjs.polarity) {
+            ex_raw = ENCODER_CPR - 1 - ex_raw;
+            ex_off = ENCODER_CPR - 1 - ex_off;
+        }
+        
+        int16_t enc_err_config = (in_off - ex_off) << 2;
+        int16_t enc_err_mes = (Encoder.raw - ex_raw) << 2;
+        int16_t enc_err = enc_err_mes - enc_err_config;  
+        
+        pos_fast_offset = enc_err / ((((float)g_multi_sec_gear - (float)g_multi_pri_gear) / (float)g_multi_sec_gear) * 65536.0f) * M_2PI; // 计算出转子上电瞬间相对零点的偏移
     }
 
     // 计算角度增量
@@ -685,19 +529,19 @@ void multi_encoder(void)
     enc_degree_fast_sum += enc_degree_delta;
     enc_degree_last = Encoder.count_in_cpr;
     
-    raw_rad_data = (pos_fast_offset + (enc_degree_fast_sum / (float)ENCODER_CPR * M_2PI)) / GEAR_RATIO; 
+    raw_rad_data = (pos_fast_offset + (enc_degree_fast_sum / (float)ENCODER_CPR * M_2PI)) / g_gear_ratio; 
 }
 
 
-int encoder_count = 0;
+//int encoder_count = 0;
 
 
 
-int32_t in_encoder_turns = 0;
-int32_t ex_encoder_turns = 0;
+// int32_t in_encoder_turns = 0;
+// int32_t ex_encoder_turns = 0;
 void ENCODER_loop(void)
 {
-	encoder_count ++;
+	// encoder_count ++;
 //	if(encoder_count > 10){
 //		return;
 //	}
@@ -725,37 +569,17 @@ void ENCODER_loop(void)
     
     if(Encoder.need_init){
         Encoder.count_in_cpr_prev = Encoder.count_in_cpr;
-        
-//        // read ex encoder
-//        int ex = ENCODER_EX_read_rectified();
-//        if(ex != -1){
-//            float c0 = 24 * Encoder.count_in_cpr / ENCODER_CPR_F;
-//            float c1 = 27 * ex / ENCODER_CPR_F;
-//            int diff = (int)((c0 - c1) + 0.5f);
-//            if(diff <= 0){
-//                diff += 27;
-//            }
-//            diff = (int)((diff / 3.0f) + 0.5f);
-//            if(diff >= 9){
-//                diff -= 9;
-//            }
-//            
-//            Encoder.shadow_count = diff * ENCODER_CPR + Encoder.count_in_cpr - (int)HOME_OFFSET;
-//            
-//            if(Encoder.shadow_count < 0){
-//                Encoder.shadow_count += ENCODER_CPR * 9;
-//            }
-//            
-//            Encoder.need_init --;
-//        }
+        Encoder.pll_pos = Encoder.count_in_cpr;
+        Encoder.pll_vel = 0;
         
         Encoder.need_init --;
         
+        multi_encoder();
         return;
     }
 		multi_encoder();
-ex_encoder_turns = Get_Multi_Turns();
-in_encoder_turns = multi_turn_check_111;
+//ex_encoder_turns = Get_Multi_Turns();
+//in_encoder_turns = multi_turn_check_111;
     /* Delta count */
     int delta_count = Encoder.count_in_cpr - Encoder.count_in_cpr_prev;
     Encoder.count_in_cpr_prev = Encoder.count_in_cpr;
@@ -785,8 +609,8 @@ in_encoder_turns = multi_turn_check_111;
     Encoder.phase = Encoder.pll_pos * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
     Encoder.vel = Encoder.pll_vel;
     Encoder.phase_vel = Encoder.vel * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
-//		Velocity_Filtered = Encoder.vel/2608.917197/12.0f;
-	  Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50)/12.0f;
+//		Velocity_Filtered = Encoder.vel/2608.917197/g_gear_ratio;
+	  Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50) / g_gear_ratio;
 
 
 }
@@ -889,189 +713,54 @@ TrajectorySetpoint SmoothTransition_Struct(const MotionInput *input) {
     
     return output;
 }
-MotionInput input_data;
-TrajectorySetpoint setpoint;
-float test_time;
-float test_pos;
-extern bool no_reset;
-//int32_t in_encoder_turns = 0;
-//int32_t ex_encoder_turns = 0;
-bool check_ex_encoder(void){
-	static int32_t step = 0;
-	float a =  240*3.14/180.0;
-	float f = 0.1;
-	float c = 0;
-	double PI = 3.1415926;
-	float pos = ((a * sin(2 * PI * f * input_data.time_current) + c));
-	float vel = (2 * PI * f * a * sin(2 * PI * f * input_data.time_current));
-	static uint32_t error_time = 0;
-//		float vel = 0;
-//float pos = 0;
 
+// ----------------------------------------------------------------------------
+// General Slip Check for Dual Encoder (16-bit Abstracted)
+// ----------------------------------------------------------------------------
+// uint16_t ENCODER_slip_check(float tolerance_rad)
+// {
+//     // Skip check if not using dual encoder branches
+//     if(g_current_branch == BRANCH_UNKNOWN) {
+//         return 0;
+//     }
 
-//	static double Q_START = 0;       // ?????? q0 = PI/2 rad (90?)
-//	static double Q_OFFSET = 0;      // ???? q1 = 2*PI rad (360?)
-//	const double TOTAL_TIME = 2.5;       // ????? T (?)
-//	const double TIME_STEP = 0.0005;       // ??????? (?)
-//	static double current_time = 0.0;
-//	double desired_q = 0.0;
-//	double desired_qd = 0.0;
-//	current_time += 0.0005;
-//	SmoothTransition(
-//            current_time, 
-//            TOTAL_TIME, 
-//            Q_START, 
-//            Q_OFFSET, 
-//            &desired_q, 
-//            &desired_qd
-//        );
-//	MotorControl.pos_set = desired_q;
-//	MotorControl.velocity_set = desired_qd;
-//	MotorControl.Kp = 100;
+//     // Skip check if encoder is not calibrated (magnets might not be installed or aligned)
+//     if(!Encoder.Config.calib_valid) {
+//         return 0;
+//     }
 
-//	MotorControl.Kd = 1;
-//	if(current_time > TOTAL_TIME){
-//		multi_check_flag = 0;
-//	}
-//ex_encoder_turns = Get_Multi_Turns();
-//in_encoder_turns = multi_turn_check_111;
-	uint8_t data[8];
-//	return 0;
-no_reset = true;
-if(Get_Multi_Turns() - multi_turn_check_111){
-	error_time ++;
-		if(error_time > 10){
-			COM_CAN_report_err(ERR_MULTI_CHECK_ERROR);
-			multi_check_flag = 0;
-			MotorControl.pos_set = 0;
-			MotorControl.velocity_set = 0;
-			MotorControl.Kp = 0;
-			MotorControl.current_mit = 0;
-			MotorControl.Kd = 0;
-			input_data.time_current = 0;
-			step = 0;
-			return true;
+//     // Abstract 14-bit MT6816 data to 16-bit space, casting floats to uint16_t first
+//     uint16_t in_16b = (uint16_t)((Encoder.raw & 0x3FFF) << 2);
+//     uint16_t ex_16b = (uint16_t)(((uint16_t)EX_ENCODER_VALUE & 0x3FFF) << 2);
+    
+//     uint16_t offset_in_16b = (uint16_t)((IN_ENCODER_OFFSET & 0x3FFF) << 2);
+//     uint16_t offset_ex_16b = (uint16_t)((EX_ENCODER_OFFSET & 0x3FFF) << 2);
 
-	}
-}else{
-	error_time = 0;
-	if(error_time > 10){
-	
-	}
-}
+//     // Calculate nominal mismatch from saved EEPROM offsets (perfect rigid relationship at zero)
+//     // Formula: (P_s * IN - P_r * EX) mod 65536
+//     uint16_t nom_mismatch = (uint16_t)((uint32_t)g_multi_pri_gear * offset_in_16b - 
+//                                        (uint32_t)g_multi_sec_gear * offset_ex_16b);
 
+//     // Calculate current mismatch from real-time raw values
+//     uint16_t cur_mismatch = (uint16_t)((uint32_t)g_multi_pri_gear * in_16b - 
+//                                        (uint32_t)g_multi_sec_gear * ex_16b);
 
-	switch(step){
-		case 0:
-		*(uint16_t*)data = Encoder.raw;
+//     // Difference (signed 16-bit automatically handles wraparound)
+//     int16_t diff = (int16_t)(cur_mismatch - nom_mismatch);
 
-		OD_write_2(0x2070, data);
+//     // Calculate threshold based on physical inner shaft radians
+//     // diff represents error: 1 count of in_16b gives g_multi_pri_gear counts of diff.
+//     // diff_thresh = (TOLERANCE_RAD / 2PI) * 65536 * g_multi_pri_gear
+//     int32_t diff_thresh = (int32_t)((tolerance_rad / M_2PI) * 65536.0f * (float)g_multi_pri_gear);
 
-		Multi_Turns = 0;
-		init_multi = true;
-		step = 4;
-		input_data.time_current = 0;
-		break;
-		case 1:
-			input_data.time_current += 0.0005;
-			MotorControl.pos_set = pos;
-			MotorControl.velocity_set = vel;
-			MotorControl.Kp = 100;
-			MotorControl.current_mit = 0;
-			MotorControl.Kd = 1;
-			if(input_data.time_current > 31.0){
-							step = 2;
+//     // Clamp threshold to prevent Nyquist limit overflow silent failures
+//     if (diff_thresh > 28000) {
+//         diff_thresh = 28000; 
+//     }
 
-			}
-			if(input_data.time_current > 30.0){
-				MotorControl.Kp = 0;
+//     if(abs((int)diff) > diff_thresh){
+//         //return ERR_ENC_SLIP;
+//     }
 
-				MotorControl.Kd = 0;
-
-			}
-			/// turn 360
-//		Q_OFFSET = 6.2832;
-		
-		break;
-		case 2:
-//			input_data.time_current += 0.0005;
-//			setpoint = SmoothTransition_Struct(&input_data);
-//			MotorControl.pos_set = setpoint.position;
-//			MotorControl.velocity_set = setpoint.velocity;
-//			MotorControl.Kp = 100;
-
-//			MotorControl.Kd = 1;
-//			if(input_data.time_current >= input_data.time_total){
-//				input_data.time_current = 0.000;
-//				step = 5;
-//				input_data.q_start = raw_rad_data;
-//				input_data.q_offset = 4*M_PI;
-//				input_data.time_total = 3;
-
-//				break;
-//			}
-		
-			multi_check_flag = 0;
-			MotorControl.pos_set = 0;
-			MotorControl.velocity_set = 0;
-			MotorControl.Kp = 0;
-			MotorControl.current_mit = 0;
-			MotorControl.Kd = 0;
-			input_data.time_current = 0;
-			step = 0;
-			return true;
-			/// turn -360
-			break;
-		case 3:
-			/// IDLE
-			MotorControl.Kp = 0;
-		input_data.time_current = 0.000;
-
-			MotorControl.Kd = 0;
-		step = 0;
-		break;
-		case 4:
-						/// motor zero 
-			input_data.time_current += 0.0005;
-//			MotorControl.pos_set = pos;
-//			MotorControl.velocity_set = vel;
-//			MotorControl.Kp = 100;
-
-//			MotorControl.Kd = 1;
-//			if(input_data.time_current > 10.0){
-//							step = 0;
-
-//			}
-		if(input_data.time_current > 2.0){
-			input_data.q_start = raw_rad_data;
-			input_data.q_offset = 2*M_PI;
-			input_data.time_current = 0.000;
-			input_data.time_total = 2.5;
-			step = 1;
-		}
-		break;
-		case 5:
-			input_data.time_current += 0.0005;
-			setpoint = SmoothTransition_Struct(&input_data);
-			MotorControl.pos_set = setpoint.position;
-			MotorControl.velocity_set = setpoint.velocity;
-			MotorControl.Kp = 100;
-
-			MotorControl.Kd = 1;
-			if(input_data.time_current >= input_data.time_total){
-				input_data.time_current = 0.000;
-				step = 3;
-				input_data.q_start = raw_rad_data;
-				input_data.q_offset = -2*M_PI;
-				input_data.time_total = 3;
-
-				break;
-			}
-			/// turn -360
-			break;
-		default: 
-			break;
-	}
-
-	
-}
+//     return 0;
+// }
