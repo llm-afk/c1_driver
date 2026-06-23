@@ -1119,7 +1119,82 @@ void MC_low_priority_task(void)
         }else{
             over_torque_dpp = 0;
         }
-        
+
+        /*
+        │ 电流 I (A)  │ 净发热 I²−400 │ 保护时间  │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     20     │       0       │    ∞     │ 额定，永远不跳 
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     21     │      41       │  122 s   │ 2 分 02 秒     
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     22     │      84       │   60 s   │ 1 分           
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     23     │      129      │   39 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     24     │      176      │   28 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     25     │      225      │   22 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     26     │      276      │   18 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     27     │      329      │   15 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     28     │      384      │   13 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     29     │      441      │   11 s   │                │
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        │     30     │      500      │   10 s   │ 标定点      
+        ├────────────┼───────────────┼──────────┼────────────────┤
+        */
+
+        // I²t overcurrent protection (soft)
+        {
+            static float i2t_acc = 0.0f;
+            const float dt = 0.01f; // 100Hz
+
+            switch(g_current_branch) 
+            {
+                case BRANCH_C2_NEW: 
+                {
+                    const float t_trip_test = 30.0f;
+                    const float t_rated     = 20.0f;
+                    const float t_trip_time = 10.0f;
+                    const float i2t_threshold = (t_trip_test * t_trip_test - t_rated * t_rated) * t_trip_time;
+
+                    float current_sq = MotorControl.id_filtered * MotorControl.id_filtered
+                                     + MotorControl.iq_filtered * MotorControl.iq_filtered;
+                    i2t_acc += (current_sq - t_rated * t_rated) * dt;
+
+                    if(i2t_acc < 0.0f) i2t_acc = 0.0f;
+
+                    if(!ERROR_IS_SET(ERR_OVER_CURRENT_SOFT) && (i2t_acc > i2t_threshold)) 
+                    {
+                        COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
+                    }
+                    break;
+                }
+                case BRANCH_C2_PRO:
+                {
+                    break;
+                }
+                case BRANCH_C2_PRO_XINZHI:
+                {
+                    break;
+                }
+                case BRANCH_A2:
+                {
+                    break;
+                }
+                case BRANCH_A2_XINZHI:
+                {
+                    break;
+                }
+                default: 
+                {
+                    break;
+                }
+            }
+        }
         // in encodedr value update
         IN_ENCODER_VALUE = Encoder.count_in_cpr;
         
