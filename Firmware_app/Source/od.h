@@ -120,6 +120,7 @@ typedef enum {
     BRANCH_C2_PRO_XINZHI,
     BRANCH_A2,
     BRANCH_A2_XINZHI,
+    BRANCH_A2_JIEKE_WHEEL,
     BRANCH_MAX
 } eBranchType;
 

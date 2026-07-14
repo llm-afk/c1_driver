@@ -132,7 +132,7 @@ int SOC_calibration_offset(void)
 
     // offset check
     i                         = 0;
-    const int Vout            = 1861;
+    const int Vout            = (g_current_branch == BRANCH_A2_XINZHI || g_current_branch == BRANCH_A2_JIEKE_WHEEL) ? 2048 : 1861;
     const int check_threshold = 500;
     if (phase_a_adc_offset > (Vout + check_threshold) || phase_a_adc_offset < (Vout - check_threshold)) {
         i = -1;

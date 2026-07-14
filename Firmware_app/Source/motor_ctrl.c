@@ -43,6 +43,82 @@ static void profile_velocity_execute(void);
 static void profile_torque_execute(void);
 static void interp_position_execute(void);
 static void servo_loop(void);
+//=============================================================================
+// 绕组电阻在线估计（d-q功率法 + Kalman，仅堵转/极低速）
+//=============================================================================
+// 公共参数（所有分支共用）
+#define R_KALMAN_Q           (3e-7f)     // 过程噪声 @1kHz
+#define R_KALMAN_R_BASE      (0.01f)     // 测量噪声基值 @I=1A
+#define R_EST_I_MIN2         (25.0f)     // I²阈值=|I|<5A→冷却
+#define R_EST_W_MAX          (5.0f)      // [rad/s] 超此速度→冷却
+#define R_COOLING_ALPHA      (2e-5f)     // 冷却衰减 @1kHz（τ≈50s）
+#define TEMP_LP_ALPHA        (1e-3f)     // 温度低通 @1kHz（τ≈1s）
+#define PHASE_TEMP_TRIP      (200.0f)    // [°C] 保护阈值
+#define PHASE_TEMP_RECOVER   (50.0f)     // [°C] 恢复阈值
+
+// CAN ACK 测试：1=100Hz 发送无人应答帧，观察 TEC/REC
+#define CAN_ACK_TEST         0
+
+// 分支标定参数：{ R_25, R_150 }
+// 格式: { 25°C相电阻[Ω], 150°C相电阻[Ω] }
+static const float g_r_calib[BRANCH_MAX][2] = {
+    [BRANCH_C2_NEW]        = { 0.265f, 0.378f },  // 实测
+};
+// 启用白名单：只有下列分支才跑温度估算
+static bool est_enabled(void) {
+    return g_current_branch == BRANCH_C2_NEW;
+}
+
+static float s_r_at_25  = 0.265f;   // 当前分支的25°C相电阻
+static float s_r_at_150 = 0.378f;   // 当前分支的150°C相电阻
+static float s_temp_coeff = 0.0f;   // 当前分支的铜温升系数
+
+float g_r_filt = 0.265f;    // [Ω] Kalman滤波R（init时用s_r_at_25重设）
+float g_temp = 25.0f;       // [°C] 绕组估算温度
+
+static void estimate_phase_resistance(void)
+{
+    if (!est_enabled()) return;
+
+    // 首次调用时从校准表加载（est_enabled 已保证分支合法 + 数组为 BRANCH_MAX 大小）
+    if (s_temp_coeff == 0.0f) {
+        s_r_at_25  = g_r_calib[g_current_branch][0];
+        s_r_at_150 = g_r_calib[g_current_branch][1];
+        s_temp_coeff = (s_r_at_150 / s_r_at_25 - 1.0f) / 125.0f;
+        g_r_filt = s_r_at_25;
+    }
+    static uint8_t decim = 0;
+    if (++decim < 20) return;  // 20kHz → 1kHz
+    decim = 0;
+
+    const float V2A = MotorControl.BusVoltage * 0.6666667f;
+    float Vd = MotorControl.mod_d * V2A;
+    float Vq = MotorControl.mod_q * V2A;
+    float Id = MotorControl.id_filtered;
+    float Iq = MotorControl.iq_filtered;
+
+    float I2 = Id * Id + Iq * Iq;
+    float R_raw = (I2 > 0.25f) ? ((Vd * Id + Vq * Iq) / I2) : 0.0f;
+
+    static float p = 0.1f;
+    p += R_KALMAN_Q;
+
+    if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < R_EST_W_MAX) 
+    {
+        float r_meas = R_KALMAN_R_BASE / (I2 + 0.001f);
+        float K = p / (p + r_meas);
+        g_r_filt += K * (R_raw - g_r_filt);
+        p = (1.0f - K) * p;
+    } 
+    else 
+    {
+        g_r_filt += R_COOLING_ALPHA * (s_r_at_25 - g_r_filt);
+    }
+
+    g_temp += TEMP_LP_ALPHA * (25.0f + (g_r_filt / s_r_at_25 - 1.0f) / s_temp_coeff - g_temp);
+}
+
+
 static inline void current_ctrl_loop(void);
 static inline void set_phase_voltage(float Valpha, float Vbeta);
 
@@ -1037,14 +1113,8 @@ static inline float lookup_ntc_temperature(float r_ntc) {
 static inline float get_ntc_temperature(void) {
     uint16_t adc = adc_buff[1];
     float r_ntc = calc_ntc_resistance(adc);
-    return lookup_ntc_temperature(r_ntc);  // ← 查表插值计算
+    return calc_temperature_celsius(r_ntc);  // ← 公式计算，无温度上限
 }
-// ✅ 主函数调用：获取温度值
-//static inline float get_ntc_temperature(void) {
-//    uint16_t adc = adc_buff[1];
-//    float r_ntc = calc_ntc_resistance(adc);
-//    return calc_temperature_celsius(r_ntc);
-//}
 float tau_l;
 float pos_err;
 float vel_err;
@@ -1099,13 +1169,13 @@ void MC_low_priority_task(void)
 
         // drv over temperature check
         DRV_TEMPERATURE = SOC_read_drv_temp();
-        if(DRV_TEMPERATURE > OVER_TEMP_DRV_LEVEL){
+        if(DRV_TEMPERATURE >= OVER_TEMP_DRV_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_DRV);
         }
         
         // motor over temperature check
         MOTOR_TEMPERATURE = get_ntc_temperature();
-        if(MOTOR_TEMPERATURE > OVER_TEMP_MOTOR_LEVEL){
+        if(MOTOR_TEMPERATURE >= OVER_TEMP_MOTOR_LEVEL){
             COM_CAN_report_err(ERR_OVER_TEMP_MOTOR);
         }
         
@@ -1120,81 +1190,31 @@ void MC_low_priority_task(void)
             over_torque_dpp = 0;
         }
 
-        /*
-        │ 电流 I (A)  │ 净发热 I²−400 │ 保护时间  │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     20     │       0       │    ∞     │ 额定，永远不跳 
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     21     │      41       │  122 s   │ 2 分 02 秒     
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     22     │      84       │   60 s   │ 1 分           
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     23     │      129      │   39 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     24     │      176      │   28 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     25     │      225      │   22 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     26     │      276      │   18 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     27     │      329      │   15 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     28     │      384      │   13 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     29     │      441      │   11 s   │                │
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        │     30     │      500      │   10 s   │ 标定点      
-        ├────────────┼───────────────┼──────────┼────────────────┤
-        */
-
-        // I²t overcurrent protection (soft)
+#if CAN_ACK_TEST
         {
-            static float i2t_acc = 0.0f;
-            const float dt = 0.01f; // 100Hz
+            CanFrame f = { .id = 0x7FE, .dlc = 0 };  // 无人应答的测试帧
+            SOC_can_transmit(&f);
+        }
+#endif
 
-            switch(g_current_branch) 
+        // 绕组电阻法温度保护（滞回：180°C触发→强制停机，50°C恢复）
+        {
+            static bool tripped = false;
+            if(g_temp >= PHASE_TEMP_TRIP) 
             {
-                case BRANCH_C2_NEW: 
+                if(!tripped) 
                 {
-                    const float t_trip_test = 30.0f;
-                    const float t_rated     = 20.0f;
-                    const float t_trip_time = 10.0f;
-                    const float i2t_threshold = (t_trip_test * t_trip_test - t_rated * t_rated) * t_trip_time;
-
-                    float current_sq = MotorControl.id_filtered * MotorControl.id_filtered
-                                     + MotorControl.iq_filtered * MotorControl.iq_filtered;
-                    i2t_acc += (current_sq - t_rated * t_rated) * dt;
-
-                    if(i2t_acc < 0.0f) i2t_acc = 0.0f;
-
-                    if(!ERROR_IS_SET(ERR_OVER_CURRENT_SOFT) && (i2t_acc > i2t_threshold)) 
-                    {
-                        COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
-                    }
-                    break;
-                }
-                case BRANCH_C2_PRO:
-                {
-                    break;
-                }
-                case BRANCH_C2_PRO_XINZHI:
-                {
-                    break;
-                }
-                case BRANCH_A2:
-                {
-                    break;
-                }
-                case BRANCH_A2_XINZHI:
-                {
-                    break;
-                }
-                default: 
-                {
-                    break;
+                    tripped = true;
+                    COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
                 }
             }
+            else if(g_temp <= PHASE_TEMP_RECOVER && tripped) 
+            {
+                tripped = false;
+                ERROR_CLR(ERR_OVER_CURRENT_SOFT);
+            }
         }
+
         // in encodedr value update
         IN_ENCODER_VALUE = Encoder.count_in_cpr;
         
@@ -1340,16 +1360,37 @@ void MC_high_priority_task(void)
     if(MotorControl.enabled_loop & ENABLED_LOOP_CURRENT){
         current_ctrl_loop();
     }
+
+    estimate_phase_resistance();
 }
 
 static inline void current_ctrl_loop(void)
 {
+#if CURRENT_LOOP_TEST
+    // Id step response test: 100Hz square wave on Id, Iq=0
+    static uint16_t test_tick = 0;
+    float id_set = (test_tick < 100) ? TEST_ID_AMPLITUDE : 0.0f;
+    float iq_set = 0.0f;
+    if (++test_tick >= 200) { test_tick = 0; }
+#else
+#if STALL_TEST_MODE
+    // 堵转测试：转矩电流→Id轴，电机锁定不动，三相绕组走直流加热
+    float id_set = MotorControl.current_set;
+    id_set = CLAMP(id_set, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
+    float iq_set = 0.0f;
+#else
+    float id_set = 0.0f;
     float iq_set = MotorControl.current_set;
-//    float iq_set = MotorControl.current_mit;
     iq_set = CLAMP(iq_set, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
+#endif
+#endif
+
+    // Expose targets for HSS monitoring
+    MotorControl.id_target = id_set;
+    MotorControl.iq_target = iq_set;
 
     // Current ctrl
-    float Vd = PI_compute_serial(&MotorControl.PID_Id,        - MotorControl.id_filtered, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, 0);
+    float Vd = PI_compute_serial(&MotorControl.PID_Id, id_set - MotorControl.id_filtered, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, 0);
     float Vq = PI_compute_serial(&MotorControl.PID_Iq, iq_set - MotorControl.iq_filtered, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, -MotorControl.MaxModulateVoltage, +MotorControl.MaxModulateVoltage, 0);
 
     // Modulate

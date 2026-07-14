@@ -151,6 +151,13 @@ typedef enum {
 //#define CURRENT_CTRL_BW_HZ          800
 #define CURRENT_CTRL_BW_HZ          350
 
+// Current loop test mode: 0=normal, 1=Id 100Hz square wave step test
+#define CURRENT_LOOP_TEST           0
+#define TEST_ID_AMPLITUDE           20.0f    // Id square wave amplitude [A]
+
+// Stall test mode: 0=normal, 1=Iq cmd → Id axis, motor locked, windings heated by DC
+#define STALL_TEST_MODE             0
+
 #define POS_INPUT_FILTER_BW         50.0f  // rad/s
 
 // Control period
@@ -192,6 +199,7 @@ typedef struct {
     float Ialpha, Ibeta;
     float Id, Iq;
     float id_filtered, iq_filtered;
+    float id_target, iq_target;     // current setpoint for HSS monitoring
     float mod_d, mod_q;
     float i_bus;
     float electrical_power;
@@ -263,5 +271,9 @@ void MC_low_priority_task(void);
 void MC_high_priority_task(void);
 
 extern inline void MC_modulate(float Vd, float Vq, float pwm_phase);
+
+// 绕组估算电阻 [Ω] + 温度 [°C]（d-q功率法 + Kalman，堵转/极低速）
+extern float g_r_filt;                                   // Kalman R
+extern float g_temp;                                     // 估算温度
 
 #endif

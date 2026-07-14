@@ -609,8 +609,8 @@ void ENCODER_loop(void)
     Encoder.phase = Encoder.pll_pos * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
     Encoder.vel = Encoder.pll_vel;
     Encoder.phase_vel = Encoder.vel * M_2PI * MOTOR_POLE_PAIRS / ENCODER_CPR_F;
-//		Velocity_Filtered = Encoder.vel/2608.917197/g_gear_ratio;
-	  Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50) / g_gear_ratio;
+	  Velocity_Filtered = Encoder.vel * M_2PI / ENCODER_CPR_F / g_gear_ratio;   // PLL速度
+//	  Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50) / g_gear_ratio;
 
 
 }
