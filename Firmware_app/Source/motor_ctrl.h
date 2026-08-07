@@ -94,6 +94,17 @@ typedef enum {
 
 
 //*****************************************************************************
+// 断联保护状态（独立于ERROR_CODE，不上报CAN紧急帧）
+//*****************************************************************************
+#define DISCONNECT_STATE_NORMAL  0  // 正常通信
+#define DISCONNECT_STATE_DAMPING 1  // 阻尼中 (Kd=1, 持续5s)
+#define DISCONNECT_STATE_STOPPED 2  // 已停机，等待CAN恢复后重新使能
+
+extern uint8_t  g_disconnect_state;
+extern uint32_t g_disconnect_tick;
+
+
+//*****************************************************************************
 // CONTROLWORD
 // * bit 0-7: CMD
 // * bit 8-15: Reserved

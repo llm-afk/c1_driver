@@ -6,6 +6,7 @@
 #include "od.h"
 #define ENCODER_PLL_BANDWIDTH   1500.0f     // rad/s
 #define ENCODER_PLL_DT          CURRENT_CTRL_PERIOD
+#define ENCODER_VEL_LP_BW       500.0f      // rad/s 速度低通 (~80Hz)
 
 #define ENCODER_BITS            (14)
 

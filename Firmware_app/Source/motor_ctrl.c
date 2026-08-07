@@ -59,6 +59,16 @@ static void servo_loop(void);
 // CAN ACK 测试：1=100Hz 发送无人应答帧，观察 TEC/REC
 #define CAN_ACK_TEST         0
 
+// ========== 断联保护（独立于ERROR_CODE，不上报）==========
+// 策略：1s无MIT CAN消息 → 5s Kd=1阻尼 → 停机等待恢复
+#define DISCONNECT_TIMEOUT_MS   1000    // 1s 无MIT消息判定断联
+#define DAMP_DURATION_TICKS     10000   // 5s @ 2kHz 阻尼持续时间
+#define DAMP_KD                 1.0f    // 阻尼Kd固定值
+
+uint8_t  g_disconnect_state = DISCONNECT_STATE_NORMAL;
+uint32_t g_disconnect_tick = 0;        // 最后一次MIT CAN消息时间戳(ms)
+static uint32_t m_damp_timer = 0;      // 阻尼计时器(2kHz ticks)
+
 // 分支标定参数：{ R_25, R_150 }
 // 格式: { 25°C相电阻[Ω], 150°C相电阻[Ω] }
 static const float g_r_calib[BRANCH_MAX][2] = {
@@ -1144,6 +1154,23 @@ void MC_low_priority_task(void)
     if(get_ms_since(tick_100) >= 10){
         tick_100 = get_tick();
 
+        // ─── 断联检测与自动恢复（独立于ERROR_CODE，不上报）───
+        if(g_disconnect_tick) {
+            if(get_ms_since(g_disconnect_tick) >= DISCONNECT_TIMEOUT_MS) {
+                // 1s无MIT CAN消息 → 进入阻尼
+                if(g_disconnect_state == DISCONNECT_STATE_NORMAL) {
+                    g_disconnect_state = DISCONNECT_STATE_DAMPING;
+                    m_damp_timer = 0;
+                }
+            } else {
+                // CAN恢复 → 自动清除断联状态
+                if(g_disconnect_state >= DISCONNECT_STATE_DAMPING) {
+                    g_disconnect_state = DISCONNECT_STATE_NORMAL;
+                    m_damp_timer = 0;
+                }
+            }
+        }
+
         // // Dual Encoder fault check (0.1 rad tolerance ~ 5.7 deg on inner shaft)
         // uint16_t enc_fault = ENCODER_slip_check(0.1f);
         // if(enc_fault != 0){
@@ -1290,21 +1317,44 @@ static inline void motor_mit_control(void)
         return; // 未授权硬件严禁执行 MIT 运算和发力
     }
 
+    MotorControl.raw_pos = raw_rad_data;
+    MotorControl.raw_vel = Velocity_Filtered;
 
-	MotorControl.raw_pos = raw_rad_data;
-		MotorControl.raw_vel = Velocity_Filtered;
+    // ─── 断联阻尼保护（独立于ERROR_CODE，不上报）───
+    if(g_disconnect_state >= DISCONNECT_STATE_DAMPING) {
+        // 纯Kd阻尼：tau = -Kd * vel  (Kd=1.0, 目标速度=0)
+        float damp_tau = -DAMP_KD * MotorControl.raw_vel;
+        damp_tau = CLAMP(damp_tau, -TORQUE_LIMIT, +TORQUE_LIMIT);
+        float iq_target = TORQUE_TO_IQ(damp_tau);
+        iq_target = CLAMP(iq_target, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
+        MotorControl.current_set = iq_target;
 
-		pos_err = (MotorControl.pos_set - raw_rad_data)/1.0f;
-		vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0f;
-	
+        if(g_disconnect_state == DISCONNECT_STATE_DAMPING) {
+            m_damp_timer++;
+            if(m_damp_timer >= DAMP_DURATION_TICKS) {
+                // 5s阻尼结束 → 停机，等待CAN恢复后重新使能
+                m_damp_timer = 0;
+                g_disconnect_state = DISCONNECT_STATE_STOPPED;
+                MC_set_state(MCS_IDLE);
+            }
+        }
+        // state==STOPPED: PWM已关断，阻尼电流不实际输出
+        return;
+    } else {
+        m_damp_timer = 0;  // 正常通信时复位阻尼计时器
+    }
 
-	  tau_l =
+    pos_err = (MotorControl.pos_set - raw_rad_data)/1.0f;
+    vel_err = (MotorControl.velocity_set - Velocity_Filtered)/1.0f;
+
+
+      tau_l =
       MotorControl.Kp * pos_err +
         MotorControl.Kd * vel_err + MotorControl.current_mit;  // ⭐ 前馈力矩
-		tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
-		float iq_target = TORQUE_TO_IQ(tau_l);
-		iq_target = CLAMP(iq_target, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
-		MotorControl.current_set = iq_target;
+    tau_l = CLAMP(tau_l, -TORQUE_LIMIT, +TORQUE_LIMIT);
+    float iq_target = TORQUE_TO_IQ(tau_l);
+    iq_target = CLAMP(iq_target, -PEAK_IQ_CURRENT, +PEAK_IQ_CURRENT);
+    MotorControl.current_set = iq_target;
 		
 //		MotorControl.enabled_loop = ENABLED_LOOP_CURRENT;
 

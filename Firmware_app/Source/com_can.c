@@ -5,6 +5,9 @@
 #include "fifo_buffer.h"
 #include "eeprom_emul.h"
 
+// 断联保护时间戳（定义在motor_ctrl.c）
+extern uint32_t g_disconnect_tick;
+
 volatile  const char version_hxb[] = "VER:1.0.5";
 
 static uint8_t mNodeID;
@@ -214,6 +217,7 @@ static void parse_frame(CanFrame *frame)
         {
             if(GET_NODE_ID(frame->id) != mNodeID) break;
             mHeartbeatConsumerTick = get_tick();
+            g_disconnect_tick = get_tick();  // 断联保护：MIT消息到达时刷新
 
             float target_pos = *(float*)&frame->data[0];
             float target_vel = *(float*)&frame->data[4];
@@ -260,6 +264,7 @@ static void parse_frame(CanFrame *frame)
         {
             if(GET_NODE_ID(frame->id) != mNodeID) break;
             mHeartbeatConsumerTick = get_tick();
+            g_disconnect_tick = get_tick();  // 断联保护：MIT消息到达时刷新
 
             if( MC_get_state() != MCS_OPERATION)
             {

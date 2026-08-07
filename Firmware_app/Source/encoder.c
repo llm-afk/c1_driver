@@ -13,8 +13,27 @@ tEncoder Encoder = {
     .pll_vel = 0,
     .pll_kp = 2.0f * ENCODER_PLL_BANDWIDTH,
     .pll_ki = 0.25f * POW2(2.0f * ENCODER_PLL_BANDWIDTH),
-    .snap_threshold = 0.5f * ENCODER_PLL_DT * ( 0.25f * POW2(2.0f * ENCODER_PLL_BANDWIDTH) ),
+    .snap_threshold = 4.0f * ENCODER_PLL_DT * ( 0.25f * POW2(2.0f * ENCODER_PLL_BANDWIDTH) ),
 };
+
+static int32_t enc_wrap_count(int32_t count)
+{
+    while(count >= ENCODER_CPR) count -= ENCODER_CPR;
+    while(count < 0)            count += ENCODER_CPR;
+    return count;
+}
+
+static int32_t enc_wrap_delta(int32_t delta)
+{
+    while(delta > +ENCODER_CPR_DIV) delta -= ENCODER_CPR;
+    while(delta < -ENCODER_CPR_DIV) delta += ENCODER_CPR;
+    return delta;
+}
+
+static int32_t enc_unwrap_near(int32_t value, int32_t reference)
+{
+    return reference + enc_wrap_delta(value - reference);
+}
 
 void ENCODER_init(void)
 {
@@ -70,6 +89,7 @@ void ENCODER_calib_end(void)
 
 void ENCODER_calib_loop(float dt)
 {
+    static int32_t calib_error_ref = 0;
     static int count_raw_start;
     static int32_t in_max = 0;
     static int32_t in_min = 16383;
@@ -144,9 +164,11 @@ void ENCODER_calib_loop(float dt)
                     Encoder.Calib.next_sample_time += sample_time_delta;
                     
                     int count_ref = (Encoder.Calib.phase_set * ENCODER_CPR_F) / (M_2PI * (float)MOTOR_POLE_PAIRS);
-                    int error = Encoder.raw - count_ref;
-                    error += ENCODER_CPR * (error<0);
-                    Encoder.Calib.errors[Encoder.Calib.sample_count] = error;
+                    int32_t error = enc_wrap_count(Encoder.raw - enc_wrap_count(count_ref));
+                    if(Encoder.Calib.sample_count == 0){
+                        calib_error_ref = error;
+                    }
+                    Encoder.Calib.errors[Encoder.Calib.sample_count] = enc_unwrap_near(error, calib_error_ref);
                     
                     Encoder.Calib.sample_count ++;
                 }
@@ -188,9 +210,10 @@ void ENCODER_calib_loop(float dt)
                     Encoder.Calib.next_sample_time += sample_time_delta;
                     
                     int count_ref = (Encoder.Calib.phase_set * ENCODER_CPR_F) / (M_2PI * (float)MOTOR_POLE_PAIRS);
-                    int error = Encoder.raw - count_ref;
-                    error += ENCODER_CPR * (error<0);
-                    Encoder.Calib.errors[Encoder.Calib.sample_count] = (Encoder.Calib.errors[Encoder.Calib.sample_count] + error) / 2;
+                    int32_t cw_error = Encoder.Calib.errors[Encoder.Calib.sample_count];
+                    int32_t ccw_error = enc_wrap_count(Encoder.raw - enc_wrap_count(count_ref));
+                    ccw_error = enc_unwrap_near(ccw_error, cw_error);
+                    Encoder.Calib.errors[Encoder.Calib.sample_count] = (cw_error + ccw_error) / 2;
 
                     Encoder.Calib.sample_count --;
                 }
@@ -589,8 +612,8 @@ void ENCODER_loop(void)
     // Run pll (for now pll is in units of encoder counts)
     // Predict current pos
     Encoder.pll_pos += ENCODER_PLL_DT * Encoder.pll_vel;
-    // Discrete phase detector
-    float delta_pos = Encoder.count_in_cpr - floorf(Encoder.pll_pos);
+    // Discrete phase detector: 不用 floorf，避免浮点精度在整数边界 ±1 跳变
+    float delta_pos = (float)Encoder.count_in_cpr - Encoder.pll_pos;
     while(delta_pos > +ENCODER_CPR_DIV) delta_pos -= ENCODER_CPR_F;
     while(delta_pos < -ENCODER_CPR_DIV) delta_pos += ENCODER_CPR_F;
     // PLL feedback
@@ -613,6 +636,12 @@ void ENCODER_loop(void)
 //	  Velocity_Filtered = get_angular_velocity_rads_v3(Encoder.raw, 50) / g_gear_ratio;
 
 
+    // {
+    //     float v_raw = Encoder.vel * M_2PI / ENCODER_CPR_F / g_gear_ratio;
+    //     static float vf_lp = 0.0f;
+    //     vf_lp += ENCODER_VEL_LP_BW * ENCODER_PLL_DT * (v_raw - vf_lp);
+    //     Velocity_Filtered = vf_lp;
+    // }
 }
 
 
