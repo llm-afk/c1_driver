@@ -49,8 +49,8 @@ static void servo_loop(void);
 // 公共参数（所有分支共用）
 #define R_KALMAN_Q           (3e-7f)     // 过程噪声 @1kHz
 #define R_KALMAN_R_BASE      (0.01f)     // 测量噪声基值 @I=1A
-#define R_EST_I_MIN2         (25.0f)     // I²阈值=|I|<5A→冷却
-#define R_EST_W_MAX          (5.0f)      // [rad/s] 超此速度→冷却
+#define R_EST_I_MIN2         (100.0f)    // I²阈值=|I|<5A→冷却
+#define R_EST_W_MAX          (3.0f)      // [rad/s] 超此速度→冷却
 #define R_COOLING_ALPHA      (2e-5f)     // 冷却衰减 @1kHz（τ≈50s）
 #define TEMP_LP_ALPHA        (1e-3f)     // 温度低通 @1kHz（τ≈1s）
 #define PHASE_TEMP_TRIP      (200.0f)    // [°C] 保护阈值
@@ -113,7 +113,20 @@ static void estimate_phase_resistance(void)
     static float p = 0.1f;
     p += R_KALMAN_Q;
 
-    if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < R_EST_W_MAX) 
+    // 堵转条件持续500ms后才启用Kalman，滤除瞬态误判
+    static uint16_t stall_hold_tick = 0;
+    if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < R_EST_W_MAX)
+    {
+        if(stall_hold_tick < 500) {
+            stall_hold_tick++;
+        }
+    }
+    else
+    {
+        stall_hold_tick = 0;
+    }
+
+    if(stall_hold_tick >= 500)
     {
         float r_meas = R_KALMAN_R_BASE / (I2 + 0.001f);
         float K = p / (p + r_meas);

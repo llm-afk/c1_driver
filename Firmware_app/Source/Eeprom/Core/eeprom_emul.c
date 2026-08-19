@@ -132,7 +132,16 @@ typedef enum {
 uint16_t uhNbWrittenElements = 0U;                  /*!< Nb of elements written in valid and active pages */
 uint8_t ubCurrentActivePage = 0U;                   /*!< Current active page (can be active or receive state) */
 uint32_t uwAddressNextWrite = PAGE_HEADER_SIZE;     /*!< Initialize write position just after page header */
-    
+
+/*
+ * Virtual addresses are application-defined values (0x2004, 0x2040, ...)
+ * and are not a compact 1..NB_OF_VARIABLES sequence.  Keep the transfer
+ * working set outside the stack so a page transfer does not depend on the
+ * numeric value of a virtual address.
+ */
+static uint16_t TransferVirtualAddresses[NB_OF_VARIABLES];
+static uint16_t TransferVirtualAddressCount = 0U;
+
 /* During the cleanup phase in EE_Init, AddressRead is the address being read */ 
 __IO uint32_t AddressRead = 0;
 /* Flag equal to 1 when the cleanup phase is in progress, 0 if not */
@@ -155,6 +164,10 @@ static uint32_t FindPage(EE_Find_type Operation);
 static EE_Status VerifyPagesFullWriteVariable(uint16_t VirtAddress, EE_DATA_TYPE Data);
 static EE_Status SetPageState(uint32_t Page, EE_State_type State);
 static EE_State_type GetPageState(uint32_t Address);
+static int IsValidVariableElement(EE_ELEMENT_TYPE Element);
+static int TransferAddressSeen(uint16_t VirtAddress);
+static int PageHasVariable(uint32_t Page, uint16_t VirtAddress);
+static EE_Status CollectTransferVirtualAddresses(void);
 
 /**
   * @}
@@ -164,6 +177,103 @@ static EE_State_type GetPageState(uint32_t Address);
 /** @addtogroup EEPROM_Exported_Functions
   * @{
   */
+
+/**
+  * @brief Check whether a flash element contains a valid user variable.
+  *        Page headers and the reset-stabilizing dummy element are excluded.
+  */
+static int IsValidVariableElement(EE_ELEMENT_TYPE Element)
+{
+  uint16_t virtual_address;
+
+  if (Element == EE_MASK_FULL) {
+    return 0;
+  }
+
+  virtual_address = EE_VIRTUALADDRESS_VALUE(Element);
+  if ((virtual_address == 0U) || (virtual_address == 0xFFFFU)) {
+    return 0;
+  }
+
+  return (CalculateCrc(EE_DATA_VALUE(Element), virtual_address) == EE_CRC_VALUE(Element));
+}
+
+static int TransferAddressSeen(uint16_t VirtAddress)
+{
+  uint16_t i;
+
+  for (i = 0U; i < TransferVirtualAddressCount; i++) {
+    if (TransferVirtualAddresses[i] == VirtAddress) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+static int PageHasVariable(uint32_t Page, uint16_t VirtAddress)
+{
+  uint32_t offset;
+  EE_ELEMENT_TYPE element;
+
+  for (offset = PAGE_HEADER_SIZE; offset < PAGE_SIZE; offset += EE_ELEMENT_SIZE) {
+    element = (*(__IO EE_ELEMENT_TYPE*)(PAGE_ADDRESS(Page) + offset));
+    if (IsValidVariableElement(element) &&
+        (EE_VIRTUALADDRESS_VALUE(element) == VirtAddress)) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+/**
+  * @brief Collect the actual virtual addresses present in the old pages.
+  *        The old implementation incorrectly treated 1..NB_OF_VARIABLES as
+  *        virtual addresses.  This scan keeps the public EEPROM format and
+  *        supports sparse application addresses such as 0x2004 and 0x2070.
+  */
+static EE_Status CollectTransferVirtualAddresses(void)
+{
+  uint32_t page;
+  uint32_t offset;
+  EE_State_type page_state;
+  EE_ELEMENT_TYPE element;
+  uint16_t virtual_address;
+
+  TransferVirtualAddressCount = 0U;
+
+  for (page = START_PAGE; page < (START_PAGE + PAGES_NUMBER); page++) {
+    /* The current receive page contains the new record and is not an old source page. */
+    if (page == ubCurrentActivePage) {
+      continue;
+    }
+
+    page_state = GetPageState(PAGE_ADDRESS(page));
+    if ((page_state != STATE_PAGE_ACTIVE) &&
+        (page_state != STATE_PAGE_VALID) &&
+        (page_state != STATE_PAGE_ERASING)) {
+      continue;
+    }
+
+    for (offset = PAGE_HEADER_SIZE; offset < PAGE_SIZE; offset += EE_ELEMENT_SIZE) {
+      element = (*(__IO EE_ELEMENT_TYPE*)(PAGE_ADDRESS(page) + offset));
+      if (!IsValidVariableElement(element)) {
+        continue;
+      }
+
+      virtual_address = EE_VIRTUALADDRESS_VALUE(element);
+      if (!TransferAddressSeen(virtual_address)) {
+        if (TransferVirtualAddressCount >= NB_OF_VARIABLES) {
+          return EE_TRANSFER_ERROR;
+        }
+        TransferVirtualAddresses[TransferVirtualAddressCount++] = virtual_address;
+      }
+    }
+  }
+
+  return EE_OK;
+}
 
 /**
   * @brief  Restore the pages to a known good state in case of power loss.
@@ -183,9 +293,10 @@ EE_Status EE_Init(EE_Erase_type EraseType)
   uint32_t page = 0U, pageaddress = 0U, varidx = 0U,
            nbactivepage = 0U, nbactivereceivepage = 0U, nbvalidpage = 0U,
            lastvalidpage = 0U, firstvalidpage = 0U,
-           recoverytransfer = 0U;
+           recoverytransfer = 0U, sourcepage = 0U;
   EE_ELEMENT_TYPE addressvalue = 0U;
   EE_State_Reliability pagestate = STATE_RELIABLE;
+  uint8_t sourcegroupvalid = 0U;
 
   EE_Status status = EE_OK;
 
@@ -246,8 +357,72 @@ EE_Status EE_Init(EE_Erase_type EraseType)
     }
   }
 
+  /* A failed old write at page 127 can leave pages 123..127 VALID with no
+     ACTIVE page because the old firmware attempted to activate page 128.
+     Page 117 is the erased page at the other group boundary; resume the
+     transfer there before the generic no-active handling can format or
+     relink pages incorrectly. */
+  if ((nbactivereceivepage == 0U) && (nbvalidpage > 0U))
+  {
+    for (sourcepage = EEPROM_GROUP_B_START_PAGE;
+         sourcepage < (START_PAGE + PAGES_NUMBER);
+         sourcepage++)
+    {
+      pagestatus = GetPageState(PAGE_ADDRESS(sourcepage));
+      if ((pagestatus == STATE_PAGE_ACTIVE) ||
+          (pagestatus == STATE_PAGE_RECEIVE))
+      {
+        sourcegroupvalid = 0U;
+        break;
+      }
+      if ((pagestatus == STATE_PAGE_VALID) ||
+          (pagestatus == STATE_PAGE_ERASING))
+      {
+        sourcegroupvalid = 1U;
+      }
+    }
+
+    /* This recovery is specifically for the old page-127 -> page-128
+       failure.  Require the physical last page to still contain the old
+       group tail; otherwise leave generic recovery to report the state. */
+    pagestatus = GetPageState(PAGE_ADDRESS(START_PAGE + PAGES_NUMBER - 1U));
+    if ((pagestatus != STATE_PAGE_VALID) &&
+        (pagestatus != STATE_PAGE_ERASING))
+    {
+      sourcegroupvalid = 0U;
+    }
+
+    if ((sourcegroupvalid != 0U) &&
+        (GetPageState(PAGE_ADDRESS(START_PAGE)) == STATE_PAGE_ERASED))
+    {
+      ubCurrentActivePage = START_PAGE;
+      uwAddressNextWrite = PAGE_HEADER_SIZE;
+      uhNbWrittenElements = 0U;
+
+      if (SetPageState(START_PAGE, STATE_PAGE_RECEIVE) != EE_OK)
+      {
+        return EE_WRITE_ERROR;
+      }
+      if (PagesTransfer(0U, 0U, EE_TRANSFER_RECOVER) != EE_CLEANUP_REQUIRED)
+      {
+        return EE_TRANSFER_ERROR;
+      }
+      recoverytransfer = 1U;
+    }
+  }
+
+  /* Do not relink or format a partially occupied source group when there is
+     no erased destination page.  Keeping the raw pages is safer than
+     replacing the only recoverable configuration copy with defaults. */
+  if ((nbactivereceivepage == 0U) && (recoverytransfer == 0U) &&
+      (sourcegroupvalid != 0U) &&
+      (GetPageState(PAGE_ADDRESS(START_PAGE)) != STATE_PAGE_ERASED))
+  {
+    return EE_TRANSFER_ERROR;
+  }
+
   /* Check if no active and no receive page have been detected */
-  if (nbactivereceivepage == 0U)
+  if ((nbactivereceivepage == 0U) && (recoverytransfer == 0U))
   {
     /* Check if valid pages have been detected */
     if (nbvalidpage > 0U)
@@ -286,7 +461,7 @@ EE_Status EE_Init(EE_Erase_type EraseType)
     {
       /* Verify that receive page is a true one, not a corrupted page state */
       /* Check if page is not the first page of a bloc */
-      if ((page != START_PAGE) && (page != (uint32_t)(START_PAGE + (PAGES_NUMBER / 2U))))
+      if (page != EEPROM_GROUP_START(page))
       {
         /* Check that previous page is valid state */
         if (GetPageState(PAGE_ADDRESS(PREVIOUS_PAGE(page))) == STATE_PAGE_VALID)
@@ -354,7 +529,7 @@ EE_Status EE_Init(EE_Erase_type EraseType)
     {
       /* Verify that active page is a true one, not a corrupted page state */
       /* Check if page is not the first page of a bloc */
-      if ((page != START_PAGE) && (page != (uint32_t)(START_PAGE + (PAGES_NUMBER / 2U))))
+      if (page != EEPROM_GROUP_START(page))
       {
         /* Check that previous page is valid state */
         if (GetPageState(PAGE_ADDRESS(PREVIOUS_PAGE(page))) == STATE_PAGE_VALID)
@@ -449,7 +624,7 @@ EE_Status EE_Init(EE_Erase_type EraseType)
   /* Update global variable uhNbWrittenElements if valid pages are found */
   page = ubCurrentActivePage;
   firstvalidpage = ubCurrentActivePage;
-  while ((page != START_PAGE) && (page != (uint32_t)(START_PAGE + (PAGES_NUMBER / 2U))))
+  while (page != EEPROM_GROUP_START(page))
   {
     /* Decrement page index among circular pages list */
     page = PREVIOUS_PAGE(page);
@@ -767,13 +942,16 @@ EE_Status EE_WriteVariable8bits(uint16_t VirtAddress, uint8_t Data)
   */
 EE_Status EE_CleanUp(void)
 {
-  uint32_t firstpage = 0U, page = 0U;
+  uint32_t firstpage = 0U, page = 0U, group_index = 0U, group_size = 0U;
   uint32_t firstpageaddress = 0U, pageaddress = 0U;
   EE_State_type firstpagestatus = STATE_PAGE_INVALID, pagestatus = STATE_PAGE_INVALID;
 
-  /* Check first half and second half page group */
-  for (firstpage = START_PAGE; firstpage < (START_PAGE + PAGES_NUMBER); firstpage += (PAGES_NUMBER / 2U))
+  /* Check the two physical groups: 117..122 (6 pages), 123..127 (5 pages). */
+  for (group_index = 0U; group_index < 2U; group_index++)
   {
+    firstpage = (group_index == 0U) ? START_PAGE : EEPROM_GROUP_B_START_PAGE;
+    group_size = (group_index == 0U) ? EEPROM_GROUP_A_PAGE_COUNT : EEPROM_GROUP_B_PAGE_COUNT;
+
     /* Check status of first page of the group */
     firstpageaddress = PAGE_ADDRESS(firstpage);
     firstpagestatus = GetPageState(firstpageaddress);
@@ -782,7 +960,7 @@ EE_Status EE_CleanUp(void)
     of the group are also erasing state */
     if (firstpagestatus == STATE_PAGE_ERASING)
     {
-      for (page = (firstpage + 1U); page < (firstpage + (PAGES_NUMBER / 2U)); page++)
+      for (page = (firstpage + 1U); page < (firstpage + group_size); page++)
       {
         pageaddress = PAGE_ADDRESS(page);
         pagestatus = GetPageState(pageaddress);
@@ -796,7 +974,7 @@ EE_Status EE_CleanUp(void)
 
       /* Erase all the pages of the group */
       /* If erase operation fails, a Flash error code is returned */
-      if (FI_PageErase(firstpage, PAGES_NUMBER / 2U) != EE_OK)
+      if (FI_PageErase(firstpage, (uint16_t)group_size) != EE_OK)
       {
         return EE_ERASE_ERROR;
       }
@@ -825,13 +1003,16 @@ EE_Status EE_CleanUp(void)
   */
 EE_Status EE_CleanUp_IT(void)
 {
-  uint32_t firstpage = 0U, page = 0U;
+  uint32_t firstpage = 0U, page = 0U, group_index = 0U, group_size = 0U;
   uint32_t firstpageaddress = 0U, pageaddress = 0U;
   EE_State_type firstpagestatus = STATE_PAGE_INVALID, pagestatus = STATE_PAGE_INVALID;
 
-  /* Check first half and second half page group */
-  for (firstpage = START_PAGE; firstpage < (START_PAGE + PAGES_NUMBER); firstpage += (PAGES_NUMBER / 2U))
+  /* Check the two physical groups: 117..122 (6 pages), 123..127 (5 pages). */
+  for (group_index = 0U; group_index < 2U; group_index++)
   {
+    firstpage = (group_index == 0U) ? START_PAGE : EEPROM_GROUP_B_START_PAGE;
+    group_size = (group_index == 0U) ? EEPROM_GROUP_A_PAGE_COUNT : EEPROM_GROUP_B_PAGE_COUNT;
+
     /* Check status of first page of the group */
     firstpageaddress = PAGE_ADDRESS(firstpage);
     firstpagestatus = GetPageState(firstpageaddress);
@@ -840,7 +1021,7 @@ EE_Status EE_CleanUp_IT(void)
     of the group are also erasing state */
     if (firstpagestatus == STATE_PAGE_ERASING)
     {
-      for (page = (firstpage + 1U); page < (firstpage + (PAGES_NUMBER / 2U)); page++)
+      for (page = (firstpage + 1U); page < (firstpage + group_size); page++)
       {
         pageaddress = PAGE_ADDRESS(page);
         pagestatus = GetPageState(pageaddress);
@@ -854,7 +1035,7 @@ EE_Status EE_CleanUp_IT(void)
 
       /* Erase all the pages of the group */
       /* If erase operation fails, a Flash error code is returned */
-      if (FI_PageErase_IT(firstpage, PAGES_NUMBER / 2U) != EE_OK)
+      if (FI_PageErase_IT(firstpage, (uint16_t)group_size) != EE_OK)
       {
         return EE_ERASE_ERROR;
       }
@@ -1077,6 +1258,14 @@ static uint32_t FindPage(EE_Find_type Operation)
         else
         /* No more space in current active page */
         {
+          /* A group boundary is handled by PagesTransfer, not by an
+             ordinary one-page rollover.  This prevents page 127 from ever
+             trying to activate a non-existent page 128. */
+          if (EEPROM_GROUP_START(currentpage) != EEPROM_GROUP_START(followingpage))
+          {
+            return EE_NO_PAGE_FOUND;
+          }
+
           /* Check if following page is erasing state */
           if (followingpagestatus == STATE_PAGE_ERASING)
           {
@@ -1116,6 +1305,11 @@ static uint32_t FindPage(EE_Find_type Operation)
           else
           /* No more space in current receive page */
           {
+            if (EEPROM_GROUP_START(currentpage) != EEPROM_GROUP_START(followingpage))
+            {
+              return EE_NO_PAGE_FOUND;
+            }
+
             /* Check if following page is erasing state */
             if (followingpagestatus == STATE_PAGE_ERASING)
             {
@@ -1334,41 +1528,41 @@ static EE_Status PagesTransfer(uint16_t VirtAddress, EE_DATA_TYPE Data, EE_Trans
     return EE_WRITE_ERROR;
   }
 
-  /* Transfer process: transfer variables from old to the new active page */
-  /* First element in receive page can be any one, the following elements are */
-  /* ordered from the beginning. */
-  /* In case of recovery, Pre-Last element in receive page could be */
-  /* corrupted if reset occured during write of this element, */
-  /* and last element is dummy value that we have just written. */
-  /* Transfer shall then resume from (uhNbWrittenElements-3) variable index */
-  
-  for (varidx = (uhNbWrittenElements >= 3U?(uhNbWrittenElements-3U+1U):1U); varidx < NB_OF_VARIABLES+1; varidx++)
-  {  
-       /* Check each variable except the one passed as parameter */
-    if (varidx != VirtAddress)
+  /* Transfer all actual virtual addresses found in the old pages.  Virtual
+     addresses in this application are sparse (0x2004, 0x2040, ...), so
+     iterating the numeric range 1..NB_OF_VARIABLES silently dropped them. */
+  status = CollectTransferVirtualAddresses();
+  if (status != EE_OK)
+  {
+    return status;
+  }
+
+  for (varidx = 0U; varidx < TransferVirtualAddressCount; varidx++)
+  {
+    uint16_t virtual_address = TransferVirtualAddresses[varidx];
+
+    /* The triggering record was already written above.  During recovery,
+       valid records already present in the receive page must not be appended
+       a second time. */
+    if ((virtual_address == VirtAddress) ||
+        ((Type == EE_TRANSFER_RECOVER) &&
+         PageHasVariable(ubCurrentActivePage, virtual_address)))
     {
-      /* Read the last variable updates */
-      status = ReadVariable(varidx, &DataValue);
-      if (status == EE_OK)
+      continue;
+    }
+
+    status = ReadVariable(virtual_address, &DataValue);
+    if (status == EE_OK)
+    {
+      status = VerifyPagesFullWriteVariable(virtual_address, DataValue);
+      if (status != EE_OK)
       {
-        /* In case variable corresponding to the virtual address was found */
-        /* Transfer the variable to the new active page */
-        /* If program operation was failed, a Flash error code is returned */
-        status = VerifyPagesFullWriteVariable(varidx, DataValue);
-        if (status != EE_OK)
-        {
-          return status;
-        }
+        return status;
       }
-      else
-      {
-        if (status != EE_NO_DATA)
-        {
-          /* In case variable is not found , do nothing */
-          /* Any other status is error code occurs during variable read */
-          return status;
-        }
-      }
+    }
+    else if (status != EE_NO_DATA)
+    {
+      return status;
     }
   }
 
@@ -1397,9 +1591,10 @@ static EE_Status PagesTransfer(uint16_t VirtAddress, EE_DATA_TYPE Data, EE_Trans
 static EE_Status VerifyPagesFullWriteVariable(uint16_t VirtAddress, EE_DATA_TYPE Data)
 {
   uint32_t crc = 0U;
+  uint32_t group_capacity = NB_MAX_ELEMENTS_BY_PAGE * EEPROM_GROUP_PAGE_COUNT(ubCurrentActivePage);
 
   /* Check if pages are full, i.e. max number of written elements achieved */
-  if (uhNbWrittenElements >= NB_MAX_WRITTEN_ELEMENTS)
+  if (uhNbWrittenElements >= group_capacity)
   {
     return EE_PAGE_FULL;
   }

@@ -44,11 +44,16 @@
 #define PAGE_SIZE               FLASH_PAGE_SIZE                                  /*!< Page size */
 #define PAGE_HEADER_SIZE        EE_ELEMENT_SIZE * 4U                             /*!< Page Header is 4 elements to save page state */
 #define NB_MAX_ELEMENTS_BY_PAGE ((PAGE_SIZE - PAGE_HEADER_SIZE) / EE_ELEMENT_SIZE) /*!< Max number of elements by page */
-#define PAGES_NUMBER            (((((NB_OF_VARIABLES + NB_MAX_ELEMENTS_BY_PAGE) / NB_MAX_ELEMENTS_BY_PAGE) * 2U) * CYCLES_NUMBER) + GUARD_PAGES_NUMBER)
-                                                                                 /*!< Number of consecutives pages used by the application */
-#define NB_MAX_WRITTEN_ELEMENTS ((NB_MAX_ELEMENTS_BY_PAGE * PAGES_NUMBER) / 2U)  /*!< Max number of elements written before triggering pages transfer */
+#define PAGES_NUMBER            11U                                              /*!< Physical pages 117..127; page 128 does not exist */
 #define START_PAGE              PAGE(START_PAGE_ADDRESS)                         /*!< Page index of the 1st page used for EEPROM emul, in the bank */
+#define EEPROM_GROUP_A_PAGE_COUNT 6U                                             /*!< Pages 117..122, matching the old layout */
+#define EEPROM_GROUP_B_START_PAGE (START_PAGE + EEPROM_GROUP_A_PAGE_COUNT)       /*!< Page 123 */
+#define EEPROM_GROUP_B_PAGE_COUNT (PAGES_NUMBER - EEPROM_GROUP_A_PAGE_COUNT)      /*!< Pages 123..127 */
+#define NB_MAX_WRITTEN_ELEMENTS (NB_MAX_ELEMENTS_BY_PAGE * EEPROM_GROUP_A_PAGE_COUNT) /*!< Largest group capacity; actual threshold is group-dependent */
 #define END_EEPROM_ADDRESS      (START_PAGE_ADDRESS + (PAGES_NUMBER * FLASH_PAGE_SIZE) - 1) /*!< Last address of EEPROM emulation flash pages */
+
+#define EEPROM_GROUP_START(__PAGE__) (((__PAGE__) < EEPROM_GROUP_B_START_PAGE) ? START_PAGE : EEPROM_GROUP_B_START_PAGE)
+#define EEPROM_GROUP_PAGE_COUNT(__PAGE__) (((__PAGE__) < EEPROM_GROUP_B_START_PAGE) ? EEPROM_GROUP_A_PAGE_COUNT : EEPROM_GROUP_B_PAGE_COUNT)
 
 /* No page define */
 #define EE_NO_PAGE_FOUND        ((uint32_t)0xFFFFFFFFU)

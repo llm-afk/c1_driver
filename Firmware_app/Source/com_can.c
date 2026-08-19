@@ -147,6 +147,9 @@ static inline void send_to_host_or_enqueue(CanFrame *tx_frame)
         fifoBuf_putData(tx_fifo, tx_frame, sizeof(CanFrame));
     }
 }
+uint32_t dfu_expected_crc = 0;
+uint32_t dfu_actual_crc = 0;
+
 static void parse_frame(CanFrame *frame)
 {
     switch(GET_MSG_ID(frame->id)){
@@ -339,11 +342,30 @@ static void parse_frame(CanFrame *frame)
                 }else
                 
                 if(0xFFFFFFFF == *(uint32_t*)&frame->data[0]){
-                    // ack
-                    *(uint32_t*)&frame->data[0] = 0xFFFFFFFF;
+                    extern uint32_t calculate_crc32(const uint8_t *data, uint32_t length);
+                    extern uint32_t DFU_get_downloaded_size(void);
                     
-                    SOC_can_transmit_block(frame);
-                    DFU_jump_to_bootloader();
+                    uint32_t downloaded_size = DFU_get_downloaded_size();
+                    
+                    if (downloaded_size >= 4) {
+                        dfu_expected_crc = *(uint32_t *)(APP_BACK_ADDR + downloaded_size - 4);
+                        dfu_actual_crc = calculate_crc32((const uint8_t *)APP_BACK_ADDR, downloaded_size - 4);
+                    } else {
+                        // 防止下载大小异常导致越界
+                        dfu_expected_crc = 0xFFFFFFFF;
+                        dfu_actual_crc = 0;
+                    }
+                    
+                    if (dfu_actual_crc == dfu_expected_crc && downloaded_size >= 4) {
+                        // ack
+                        *(uint32_t*)&frame->data[0] = 0xFFFFFFFF;
+                        
+                        SOC_can_transmit_block(frame);
+                        DFU_jump_to_bootloader();
+                    } else {
+                        // nack
+                        *(uint32_t*)&frame->data[0] = 0x00000000;
+                    }
                 }
                 
                 send_to_host_or_enqueue(frame);

@@ -16,25 +16,6 @@ tEncoder Encoder = {
     .snap_threshold = 4.0f * ENCODER_PLL_DT * ( 0.25f * POW2(2.0f * ENCODER_PLL_BANDWIDTH) ),
 };
 
-static int32_t enc_wrap_count(int32_t count)
-{
-    while(count >= ENCODER_CPR) count -= ENCODER_CPR;
-    while(count < 0)            count += ENCODER_CPR;
-    return count;
-}
-
-static int32_t enc_wrap_delta(int32_t delta)
-{
-    while(delta > +ENCODER_CPR_DIV) delta -= ENCODER_CPR;
-    while(delta < -ENCODER_CPR_DIV) delta += ENCODER_CPR;
-    return delta;
-}
-
-static int32_t enc_unwrap_near(int32_t value, int32_t reference)
-{
-    return reference + enc_wrap_delta(value - reference);
-}
-
 void ENCODER_init(void)
 {
     memcpy(&Encoder.Config, (uint8_t*)(FLASH_BASE + ENCODER_CALIB_PAGE*FLASH_PAGE_SIZE), sizeof(tEncoderConfig));
@@ -89,7 +70,6 @@ void ENCODER_calib_end(void)
 
 void ENCODER_calib_loop(float dt)
 {
-    static int32_t calib_error_ref = 0;
     static int count_raw_start;
     static int32_t in_max = 0;
     static int32_t in_min = 16383;
@@ -125,7 +105,7 @@ void ENCODER_calib_loop(float dt)
         case 2: // cw find direction
             Encoder.Calib.phase_set += phase_delta;
             MC_modulate(voltage, 0, Encoder.Calib.phase_set);
-            if(Encoder.Calib.phase_set >= 4.0f * M_2PI){
+            if(Encoder.Calib.phase_set >= 2.0f * M_2PI){
                 int diff = Encoder.raw - count_raw_start;
                 if (diff > +ENCODER_CPR_DIV) {
                     diff -= ENCODER_CPR;
@@ -164,11 +144,9 @@ void ENCODER_calib_loop(float dt)
                     Encoder.Calib.next_sample_time += sample_time_delta;
                     
                     int count_ref = (Encoder.Calib.phase_set * ENCODER_CPR_F) / (M_2PI * (float)MOTOR_POLE_PAIRS);
-                    int32_t error = enc_wrap_count(Encoder.raw - enc_wrap_count(count_ref));
-                    if(Encoder.Calib.sample_count == 0){
-                        calib_error_ref = error;
-                    }
-                    Encoder.Calib.errors[Encoder.Calib.sample_count] = enc_unwrap_near(error, calib_error_ref);
+                    int error = Encoder.raw - count_ref;
+                    error += ENCODER_CPR * (error<0);
+                    Encoder.Calib.errors[Encoder.Calib.sample_count] = error;
                     
                     Encoder.Calib.sample_count ++;
                 }
@@ -210,10 +188,9 @@ void ENCODER_calib_loop(float dt)
                     Encoder.Calib.next_sample_time += sample_time_delta;
                     
                     int count_ref = (Encoder.Calib.phase_set * ENCODER_CPR_F) / (M_2PI * (float)MOTOR_POLE_PAIRS);
-                    int32_t cw_error = Encoder.Calib.errors[Encoder.Calib.sample_count];
-                    int32_t ccw_error = enc_wrap_count(Encoder.raw - enc_wrap_count(count_ref));
-                    ccw_error = enc_unwrap_near(ccw_error, cw_error);
-                    Encoder.Calib.errors[Encoder.Calib.sample_count] = (cw_error + ccw_error) / 2;
+                    int error = Encoder.raw - count_ref;
+                    error += ENCODER_CPR * (error<0);
+                    Encoder.Calib.errors[Encoder.Calib.sample_count] = (Encoder.Calib.errors[Encoder.Calib.sample_count] + error) / 2;
 
                     Encoder.Calib.sample_count --;
                 }
@@ -228,13 +205,26 @@ void ENCODER_calib_loop(float dt)
             
         case 8: // Calculate
             {
-                // Missing Magnet Check (threshold set to half a turn = 8192 counts)
-                if((in_max - in_min) < 8192 || (ex_max - ex_min) < 8192) 
+                // Missing Magnet Check (half a turn = 8192 counts)
+                if(g_current_branch == BRANCH_A2_JIEKE_WHEEL)
                 {
-                    COM_CAN_report_err(ERR_ENC_MISSING);
-                    Encoder.Config.calib_valid = false;
-                    Encoder.Calib.calib_step = 9; // Abort calibration
-                    break;
+                    if((in_max - in_min) < 8192)
+                    {
+                        COM_CAN_report_err(ERR_ENC_MISSING);
+                        Encoder.Config.calib_valid = false;
+                        Encoder.Calib.calib_step = 9;
+                        break;
+                    }
+                }
+                else
+                {
+                    if((in_max - in_min) < 8192 || (ex_max - ex_min) < 8192)
+                    {
+                        COM_CAN_report_err(ERR_ENC_MISSING);
+                        Encoder.Config.calib_valid = false;
+                        Encoder.Calib.calib_step = 9;
+                        break;
+                    }
                 }
 
                 // Calculate average offset

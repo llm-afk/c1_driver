@@ -2,24 +2,53 @@
 #include "eeprom_emul.h"
 #include "flash_interface.h"
 
-void FI_flash_erase_page(uint32_t page_num)
+static EE_Status FI_flash_erase_page_status(uint32_t page_num)
 {
+    uint32_t address;
+    EE_Status status = EE_OK;
+
+    if (page_num >= (BANK_SIZE / FLASH_PAGE_SIZE)) {
+        return EE_ERASE_ERROR;
+    }
+
+    address = FLASH_BASE + page_num * FLASH_PAGE_SIZE;
+
     ENTER_CRITICAL();
     
     watch_dog_feed();
     
     fmc_unlock();
     fmc_flag_clear(FMC_FLAG_END | FMC_FLAG_WPERR | FMC_FLAG_PGAERR | FMC_FLAG_PGERR);
-    fmc_page_erase(FLASH_BASE + page_num * FLASH_PAGE_SIZE);
+    if (FMC_READY != fmc_page_erase(address)) {
+        status = EE_ERASE_ERROR;
+    }
     fmc_lock();
     
     watch_dog_feed();
     
     EXIT_CRITICAL();
+
+    return status;
 }
 
-void FI_flash_write(uint8_t *p_dest, uint8_t *p_src, uint32_t size_bytes)
+void FI_flash_erase_page(uint32_t page_num)
 {
+    (void)FI_flash_erase_page_status(page_num);
+}
+
+static EE_Status FI_flash_write_status(uint8_t *p_dest, uint8_t *p_src, uint32_t size_bytes)
+{
+    uint32_t address = (uint32_t)p_dest;
+    EE_Status status = EE_OK;
+
+    if ((address < FLASH_BASE) ||
+        ((address & 0x3U) != 0U) ||
+        ((size_bytes & 0x3U) != 0U) ||
+        (size_bytes > BANK_SIZE) ||
+        (address > (FLASH_BASE + BANK_SIZE - size_bytes))) {
+        return EE_WRITE_ERROR;
+    }
+
     // The memory controller requires all flash writes to start on a 16-byte boundary and consist of 16 bytes in size
     // If the desired amount to be written is less than 16 bytes, this code writes the other bytes as 0xFF to preserve the contents.
     // The Memory Controller will automatically hold off the write of the next 16 bytes until the previous write is complete.
@@ -30,18 +59,25 @@ void FI_flash_write(uint8_t *p_dest, uint8_t *p_src, uint32_t size_bytes)
     fmc_unlock();
 
     // Program
-    for (int i = 0; i < size_bytes; i+=4) {
+    for (uint32_t i = 0U; i < size_bytes; i += 4U) {
         watch_dog_feed();
         fmc_flag_clear(FMC_FLAG_END | FMC_FLAG_WPERR | FMC_FLAG_PGAERR | FMC_FLAG_PGERR);
         if (FMC_READY != fmc_word_program((uint32_t)(p_dest + i), *(uint32_t*)(p_src + i))) {
-            fmc_lock();
-            return;
+            status = EE_WRITE_ERROR;
+            break;
         }
     }
 
     fmc_lock();
     
     EXIT_CRITICAL();
+
+    return status;
+}
+
+void FI_flash_write(uint8_t *p_dest, uint8_t *p_src, uint32_t size_bytes)
+{
+    (void)FI_flash_write_status(p_dest, p_src, size_bytes);
 }
 
 /**
@@ -52,8 +88,13 @@ void FI_flash_write(uint8_t *p_dest, uint8_t *p_src, uint32_t size_bytes)
   */
 EE_Status FI_WriteDoubleWord(uint32_t Address, uint64_t Data)
 {
-    FI_flash_write((uint8_t*)Address, (uint8_t*)&Data, 8);
-    return EE_OK;
+    EE_Status status = FI_flash_write_status((uint8_t*)Address, (uint8_t*)&Data, 8);
+
+    if ((status == EE_OK) && (*(__IO uint64_t*)Address != Data)) {
+        return EE_WRITE_ERROR;
+    }
+
+    return status;
 }
 
 /**
@@ -67,7 +108,10 @@ EE_Status FI_WriteDoubleWord(uint32_t Address, uint64_t Data)
 EE_Status FI_PageErase(uint32_t Page, uint16_t NbPages)
 {
     for(int i=0; i<NbPages; i++){
-        FI_flash_erase_page(Page+i);
+        EE_Status status = FI_flash_erase_page_status(Page+i);
+        if (status != EE_OK) {
+            return status;
+        }
     }
     return EE_OK;
 }
@@ -83,7 +127,10 @@ EE_Status FI_PageErase(uint32_t Page, uint16_t NbPages)
 EE_Status FI_PageErase_IT(uint32_t Page, uint16_t NbPages)
 {
     for(int i=0; i<NbPages; i++){
-        FI_flash_erase_page(Page+i);
+        EE_Status status = FI_flash_erase_page_status(Page+i);
+        if (status != EE_OK) {
+            return status;
+        }
     }
     return EE_OK;
 }
@@ -107,7 +154,5 @@ EE_Status FI_DeleteCorruptedFlashAddress(uint32_t Address)
 {
     uint64_t Data = 0;
     
-    FI_flash_write((uint8_t*)Address, (uint8_t*)&Data, 8);
-    
-    return EE_OK;
+    return FI_flash_write_status((uint8_t*)Address, (uint8_t*)&Data, 8);
 }

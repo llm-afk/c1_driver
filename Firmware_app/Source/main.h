@@ -66,7 +66,7 @@ static inline void LED_ACT_TOGGLE(void)
 #define ENCODER_CALIB_PAGE			(115)
 #define ENCODER_CALIB_PAGE_COUNT  	(2)
 
-// 11 KB
+// 11 physical pages used by the EEPROM emulation (pages 117..127).
 #define EEPROM_PAGE					(117)
 #define EEPROM_PAGE_COUNT  			(11)
 

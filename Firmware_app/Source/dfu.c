@@ -4,6 +4,11 @@
 
 static uint32_t mByteCount = 0;
 
+uint32_t DFU_get_downloaded_size(void)
+{
+    return mByteCount;
+}
+
 static int erase_app_back(void);
 static int write_app_back(uint8_t *data, uint32_t offset, uint32_t len);
 
@@ -93,6 +98,28 @@ void DFU_jump_to_bootloader(void)
 
     /* Jump to the bootloader */
     (*(void (*)(void))(*(uint32_t *) (boot_addr + 4)))();
+}
+uint32_t calculate_crc32(const uint8_t *data, uint32_t length) 
+{
+    uint32_t crc = 0xFFFFFFFFU;
+    
+    for (uint32_t i = 0; i < length; i++) {
+        // 每计算 1024 字节喂一次狗
+        if ((i & 0x3FF) == 0) {
+            watch_dog_feed();
+        }
+        
+        crc ^= data[i];
+        for (int bit = 0; bit < 8; bit++) {
+            if (crc & 1U) {
+                crc = (crc >> 1) ^ 0xEDB88320U;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    
+    return crc ^ 0xFFFFFFFFU;
 }
 
 static int erase_app_back(void)

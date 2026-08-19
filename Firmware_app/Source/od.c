@@ -17,6 +17,7 @@ typedef struct {
 ODObjs_t ODObjs;
 static uint16_t ODObjsCount;
 uint16_t g_current_sdo_index = 0;
+static uint8_t eeprom_storage_error = 0U;
 
 static eBranchType Parse_Branch_From_SN(void);
 static int SN_update_callback(void);
@@ -275,7 +276,14 @@ void OD_init(void)
     
     dictionary_init();
 
-    EE_Init(EE_FORCED_ERASE);
+    /* Keep the communication/OTA path alive on a storage recovery failure,
+       but block all further EEPROM writes so defaults cannot overwrite a
+       still-recoverable Flash copy. */
+    if (EE_Init(EE_FORCED_ERASE) != EE_OK) {
+        eeprom_storage_error = 1U;
+        OD_check_sn();
+        return;
+    }
 
     for(int i=0; i<ODObjsCount; i++){
         if(ODList[i].attribute & ATTR_ROM){
@@ -366,6 +374,10 @@ uint8_t OD_read(uint16_t idx, uint8_t *data)
 uint8_t OD_write_1(uint16_t idx, uint8_t *data)
 {
     uint8_t cs = CS_ERR;
+
+    if (eeprom_storage_error != 0U) {
+        return cs;
+    }
     
     // get entry
     OD_entry_t *entry = find_entry(idx);
@@ -405,6 +417,10 @@ uint8_t flag_zero[2] = {0};
 uint8_t OD_write_2(uint16_t idx, uint8_t *data)
 {
     uint8_t cs = CS_ERR;
+
+    if (eeprom_storage_error != 0U) {
+        return cs;
+    }
     
     // get entry
     OD_entry_t *entry = find_entry(idx);
@@ -519,6 +535,10 @@ uint8_t OD_write_2(uint16_t idx, uint8_t *data)
 uint8_t OD_write_4(uint16_t idx, uint8_t *data)
 {
     uint8_t cs = CS_ERR;
+
+    if (eeprom_storage_error != 0U) {
+        return cs;
+    }
     
     // get entry
     OD_entry_t *entry = find_entry(idx);
