@@ -285,6 +285,6 @@ extern inline void MC_modulate(float Vd, float Vq, float pwm_phase);
 
 // 绕组估算电阻 [Ω] + 温度 [°C]（d-q功率法 + Kalman，堵转/极低速）
 extern float g_r_filt;                                   // Kalman R
-extern float g_temp;                                     // 估算温度
+extern volatile float g_temp;                            // 估算温度（中断写、主循环读）
 
 #endif

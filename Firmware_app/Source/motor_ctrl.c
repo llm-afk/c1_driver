@@ -51,9 +51,11 @@ static void servo_loop(void);
 #define R_KALMAN_R_BASE      (0.01f)     // 测量噪声基值 @I=1A
 #define R_EST_I_MIN2         (100.0f)    // I²阈值=|I|<5A→冷却
 #define R_EST_W_MAX          (3.0f)      // [rad/s] 超此速度→冷却
-#define R_COOLING_ALPHA      (2e-5f)     // 冷却衰减 @1kHz（τ≈50s）
+#define R_COOLING_ALPHA      (0.5e-5f)   // 冷却衰减 @1kHz
 #define TEMP_LP_ALPHA        (1e-3f)     // 温度低通 @1kHz（τ≈1s）
-#define PHASE_TEMP_TRIP      (200.0f)    // [°C] 保护阈值
+#define R_EST_RAW_TEMP_STEP  (10.0f)     // @1kHz允许的原始温度最大跳变
+#define R_EST_RAW_CONFIRM    (10U)        // 异常连续确认次数
+#define PHASE_TEMP_TRIP      (180.0f)    // [°C] 保护阈值
 #define PHASE_TEMP_RECOVER   (50.0f)     // [°C] 恢复阈值
 
 // CAN ACK 测试：1=100Hz 发送无人应答帧，观察 TEC/REC
@@ -73,10 +75,12 @@ static uint32_t m_damp_timer = 0;      // 阻尼计时器(2kHz ticks)
 // 格式: { 25°C相电阻[Ω], 150°C相电阻[Ω] }
 static const float g_r_calib[BRANCH_MAX][2] = {
     [BRANCH_C2_NEW]        = { 0.265f, 0.378f },  // 实测
+    [BRANCH_C2_PRO_XINZHI] = { 0.110f, 0.170f },
 };
 // 启用白名单：只有下列分支才跑温度估算
 static bool est_enabled(void) {
-    return g_current_branch == BRANCH_C2_NEW;
+    return g_current_branch == BRANCH_C2_NEW ||
+           g_current_branch == BRANCH_C2_PRO_XINZHI;
 }
 
 static float s_r_at_25  = 0.265f;   // 当前分支的25°C相电阻
@@ -84,7 +88,7 @@ static float s_r_at_150 = 0.378f;   // 当前分支的150°C相电阻
 static float s_temp_coeff = 0.0f;   // 当前分支的铜温升系数
 
 float g_r_filt = 0.265f;    // [Ω] Kalman滤波R（init时用s_r_at_25重设）
-float g_temp = 25.0f;       // [°C] 绕组估算温度
+volatile float g_temp = 25.0f; // [°C] 绕组估算温度（中断写、主循环读）
 
 static void estimate_phase_resistance(void)
 {
@@ -111,27 +115,65 @@ static void estimate_phase_resistance(void)
     float R_raw = (I2 > 0.25f) ? ((Vd * Id + Vq * Iq) / I2) : 0.0f;
 
     static float p = 0.1f;
+    static bool raw_temp_initialized = false;
+    static float last_raw_temp = 25.0f;
+    static uint8_t raw_temp_anomaly_count = 0;
     p += R_KALMAN_Q;
 
-    // 堵转条件持续500ms后才启用Kalman，滤除瞬态误判
+    // 堵转条件持续100ms后才启用Kalman，滤除瞬态误判
     static uint16_t stall_hold_tick = 0;
     if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < R_EST_W_MAX)
     {
-        if(stall_hold_tick < 500) {
+        if(stall_hold_tick < 100) {
             stall_hold_tick++;
         }
     }
     else
     {
         stall_hold_tick = 0;
+        raw_temp_initialized = false;
+        raw_temp_anomaly_count = 0;
     }
 
-    if(stall_hold_tick >= 500)
+    if(stall_hold_tick >= 100)
     {
-        float r_meas = R_KALMAN_R_BASE / (I2 + 0.001f);
-        float K = p / (p + r_meas);
-        g_r_filt += K * (R_raw - g_r_filt);
-        p = (1.0f - K) * p;
+        // 反电动势/换相瞬态可能使 R_raw 瞬间异常；只检查温度变化率。
+        bool raw_valid = false;
+        float raw_temp = 25.0f;
+        if (R_raw > 0.0f && isfinite(R_raw)) {
+            raw_temp = 25.0f + (R_raw / s_r_at_25 - 1.0f) / s_temp_coeff;
+
+            if (isfinite(raw_temp)) {
+                if (!raw_temp_initialized) {
+                    last_raw_temp = 25.0f +
+                                    (g_r_filt / s_r_at_25 - 1.0f) / s_temp_coeff;
+                    raw_temp_initialized = true;
+                }
+
+                if (fabsf(raw_temp - last_raw_temp) <= R_EST_RAW_TEMP_STEP) {
+                    raw_valid = true;
+                    raw_temp_anomaly_count = 0;
+                } else if (raw_temp_anomaly_count < R_EST_RAW_CONFIRM) {
+                    // 单点/短脉冲异常不采纳；连续确认后允许真实温度变化跟上。
+                    raw_temp_anomaly_count++;
+                    if (raw_temp_anomaly_count >= R_EST_RAW_CONFIRM) {
+                        raw_valid = true;
+                        raw_temp_anomaly_count = 0;
+                    }
+                }
+
+                if (raw_valid) {
+                    last_raw_temp = raw_temp;
+                }
+            }
+        }
+
+        if (raw_valid) {
+            float r_meas = R_KALMAN_R_BASE / (I2 + 0.001f);
+            float K = p / (p + r_meas);
+            g_r_filt += K * (R_raw - g_r_filt);
+            p = (1.0f - K) * p;
+        }
     } 
     else 
     {

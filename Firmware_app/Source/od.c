@@ -1122,9 +1122,9 @@ void HW_Config_Init(eBranchType branch)
             g_torque_calib_table    = table_c2_pro_xinzhi;
             g_torque_calib_table_len = sizeof(table_c2_pro_xinzhi) / sizeof(table_c2_pro_xinzhi[0]);
             ODObjs.motor_pp   = 10;
-            ODObjs.motor_r    = 0.125f;
-            ODObjs.motor_l_d  = 160e-6f;        
-            ODObjs.motor_l_q  = 160e-6f;
+            ODObjs.motor_r    = 0.110f;
+            ODObjs.motor_l_d  = 135e-6f;        
+            ODObjs.motor_l_q  = 135e-6f;
             ODObjs.polarity   = 1;
             ODObjs.over_temp_drv_level   = 85.0f;
             ODObjs.over_temp_motor_level = 150.0f;
@@ -1162,9 +1162,9 @@ void HW_Config_Init(eBranchType branch)
             g_torque_calib_table    = table_a2_xinzhi;
             g_torque_calib_table_len = sizeof(table_a2_xinzhi) / sizeof(table_a2_xinzhi[0]);
             ODObjs.motor_pp   = 10;
-            ODObjs.motor_r    = 0.105f; 
-            ODObjs.motor_l_d  = 160e-6f;        
-            ODObjs.motor_l_q  = 160e-6f;
+            ODObjs.motor_r    = 0.110f; 
+            ODObjs.motor_l_d  = 135e-6f;        
+            ODObjs.motor_l_q  = 135e-6f;
             ODObjs.polarity   = 1;
             ODObjs.over_temp_drv_level   = 85.0f;
             ODObjs.over_temp_motor_level = 150.0f;
