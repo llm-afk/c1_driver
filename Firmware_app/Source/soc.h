@@ -20,6 +20,8 @@ static const uint8_t dlc_to_len_table[] = {0,1,2,3,4,5,6,7,8,12,16,20,24,32,48,6
 #define PWM_PERIOD_CYCLES      (uint16_t)((TIMER0_CLK_MHz * (uint32_t) 1000000u / ((uint32_t) (PWM_FREQUENCY))) & 0xFFFE)
 #define PWM_PERIOD_CYCLES_DIV  (uint16_t)(PWM_PERIOD_CYCLES / 2U)
 
+#include "current_sample_window.h"
+
 #define SHUNT_RESISTENCE       (0.002f)
 #define V_SCALE                ((float) (31.0f * 3.3f / 4095.0f))
 #include "od.h"
@@ -91,6 +93,19 @@ static inline void set_b_duty(uint32_t duty)
 static inline void set_c_duty(uint32_t duty)
 {
     TIMER_CH0CV(TIMER0) = duty;
+}
+
+extern volatile uint8_t g_current_sample_window_enabled;
+void SOC_config_current_sampling(eBranchType branch);
+
+static inline void set_phase_duties(uint32_t a, uint32_t b, uint32_t c)
+{
+    uint32_t shift = g_current_sample_window_enabled
+        ? current_sample_window_shift(a, b, c, PWM_PERIOD_CYCLES_DIV) : 0u;
+
+    set_a_duty(a - shift);
+    set_b_duty(b - shift);
+    set_c_duty(c - shift);
 }
 
 void SOC_init(void);

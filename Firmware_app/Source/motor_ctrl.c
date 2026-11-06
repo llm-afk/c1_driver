@@ -12,6 +12,7 @@ static float mProfileDeceleration;
 static float mProfileTorqueSlope;
 
 static bool mIsTPDOReport = false;
+static bool mA2OverloadCooldown = false;
 static float mInterAcc2CurrFactor;
 
 #define USR_TO_INTER(value)             (value * mElecGear)
@@ -49,14 +50,17 @@ static void servo_loop(void);
 // 公共参数（所有分支共用）
 #define R_KALMAN_Q           (3e-7f)     // 过程噪声 @1kHz
 #define R_KALMAN_R_BASE      (0.01f)     // 测量噪声基值 @I=1A
-#define R_EST_I_MIN2         (100.0f)    // I²阈值=|I|<5A→冷却
-#define R_EST_W_MAX          (3.0f)      // [rad/s] 超此速度→冷却
+#define R_EST_I_MIN2         (100.0f)    // I²阈值=|I|<10A→冷却
+#define R_EST_OUTPUT_W_MAX   (0.05f)     // [输出轴 rad/s] 估温速度门槛
 #define R_COOLING_ALPHA      (0.5e-5f)   // 冷却衰减 @1kHz
 #define TEMP_LP_ALPHA        (1e-3f)     // 温度低通 @1kHz（τ≈1s）
 #define R_EST_RAW_TEMP_STEP  (10.0f)     // @1kHz允许的原始温度最大跳变
 #define R_EST_RAW_CONFIRM    (10U)        // 异常连续确认次数
 #define PHASE_TEMP_TRIP      (180.0f)    // [°C] 保护阈值
 #define PHASE_TEMP_RECOVER   (50.0f)     // [°C] 恢复阈值
+
+/* A2_XINZHI test calibration: 40% more estimated rise above 25 C. */
+#define A2_XINZHI_TEMP_RISE_GAIN (1.40f)
 
 // CAN ACK 测试：1=100Hz 发送无人应答帧，观察 TEC/REC
 #define CAN_ACK_TEST         0
@@ -80,7 +84,8 @@ static const float g_r_calib[BRANCH_MAX][2] = {
 // 启用白名单：只有下列分支才跑温度估算
 static bool est_enabled(void) {
     return g_current_branch == BRANCH_C2_NEW ||
-           g_current_branch == BRANCH_C2_PRO_XINZHI;
+           g_current_branch == BRANCH_C2_PRO_XINZHI ||
+           g_current_branch == BRANCH_A2_XINZHI;
 }
 
 static float s_r_at_25  = 0.265f;   // 当前分支的25°C相电阻
@@ -94,11 +99,19 @@ static void estimate_phase_resistance(void)
 {
     if (!est_enabled()) return;
 
-    // 首次调用时从校准表加载（est_enabled 已保证分支合法 + 数组为 BRANCH_MAX 大小）
+    // 首次调用时加载基准电阻和温度系数。
     if (s_temp_coeff == 0.0f) {
-        s_r_at_25  = g_r_calib[g_current_branch][0];
-        s_r_at_150 = g_r_calib[g_current_branch][1];
+        eBranchType calibration_branch = (g_current_branch == BRANCH_A2_XINZHI)
+            ? BRANCH_C2_PRO_XINZHI : g_current_branch;
+        s_r_at_25  = g_r_calib[calibration_branch][0];
+        s_r_at_150 = g_r_calib[calibration_branch][1];
         s_temp_coeff = (s_r_at_150 / s_r_at_25 - 1.0f) / 125.0f;
+        if (g_current_branch == BRANCH_A2_XINZHI) {
+            // Keep configured R25; apply an A2-only temperature-rise test gain.
+            s_r_at_25 = MOTOR_PHASE_R;
+            s_temp_coeff /= A2_XINZHI_TEMP_RISE_GAIN;
+            s_r_at_150 = s_r_at_25 * (1.0f + 125.0f * s_temp_coeff);
+        }
         g_r_filt = s_r_at_25;
     }
     static uint8_t decim = 0;
@@ -122,7 +135,9 @@ static void estimate_phase_resistance(void)
 
     // 堵转条件持续100ms后才启用Kalman，滤除瞬态误判
     static uint16_t stall_hold_tick = 0;
-    if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < R_EST_W_MAX)
+    // Convert the shared output-shaft limit to the PLL's electrical rad/s.
+    const float phase_speed_limit = R_EST_OUTPUT_W_MAX * MOTOR_POLE_PAIRS * g_gear_ratio;
+    if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < phase_speed_limit)
     {
         if(stall_hold_tick < 100) {
             stall_hold_tick++;
@@ -553,7 +568,8 @@ void MC_error_reset(void)
 {
     if(ERROR_CODE){
         // 只清除可恢复错误，保留硬错误（SN锁、编码器未标定、ADC故障）
-        ERROR_CODE &= (ERR_NO_SN | ERR_ENC_CALIB | ERR_ADC_SELFTEST);
+        ERROR_CODE &= (ERR_NO_SN | ERR_ENC_CALIB | ERR_ADC_SELFTEST |
+                      (mA2OverloadCooldown ? ERR_OVER_CURRENT_SOFT : 0));
 
         if(ERROR_CODE == 0){
             SW_ERROR_RESET();
@@ -1279,6 +1295,42 @@ void MC_low_priority_task(void)
         }
 #endif
 
+        /* Legacy A2 / wheel: accumulate 500 high-load checks at 100 Hz.
+           A2_XINZHI uses the resistance-based temperature protection below.
+           Clear only after 100 consecutive checks below 85% (or inactive);
+           brief dips hold. */
+        {
+            static uint16_t a2_overload_ticks = 0;
+            static uint16_t a2_recovery_ticks = 0;
+            static uint32_t a2_trip_tick = 0;
+            bool a2 = g_current_branch == BRANCH_A2 ||
+                      g_current_branch == BRANCH_A2_JIEKE_WHEEL;
+            float torque = ABS(ACTUAL_TORQUE);
+
+            /* After a trip, allow fault reset only after 100 seconds. */
+            if (mA2OverloadCooldown) {
+                if (get_ms_since(a2_trip_tick) >= 100000u) {
+                    a2_overload_ticks = 0;
+                    a2_recovery_ticks = 0;
+                    mA2OverloadCooldown = false;
+                }
+            } else if (a2 && MC_get_state() == MCS_OPERATION && TORQUE_LIMIT > 0.0f &&
+                torque >= 0.85f * TORQUE_LIMIT) {
+                a2_recovery_ticks = 0;
+                if (torque >= 0.90f * TORQUE_LIMIT && a2_overload_ticks < 500u) {
+                    a2_overload_ticks++;
+                }
+                if (a2_overload_ticks >= 500u) {
+                    a2_trip_tick = get_tick();
+                    mA2OverloadCooldown = true;
+                    COM_CAN_report_err(ERR_OVER_CURRENT_SOFT);
+                }
+            } else {
+                if (a2_recovery_ticks < 100u) a2_recovery_ticks++;
+                if (a2_recovery_ticks >= 100u) a2_overload_ticks = 0;
+            }
+        }
+
         // 绕组电阻法温度保护（滞回：180°C触发→强制停机，50°C恢复）
         {
             static bool tripped = false;
@@ -1617,9 +1669,7 @@ static inline void set_phase_voltage(float Valpha, float Vbeta)
         } break;
     }
 
-    set_a_duty(CntPhA);
-    set_b_duty(CntPhB);
-    set_c_duty(CntPhC);
+    set_phase_duties(CntPhA, CntPhB, CntPhC);
 }
 
 inline void MC_modulate(float Vd, float Vq, float phase)

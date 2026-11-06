@@ -37,6 +37,7 @@
 .\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\encoder.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\encoder.o: ..\Source\current_sample_window.h
 .\object\encoder.o: ..\Source\od.h
 .\object\encoder.o: ..\Source\torque_calib.h
 .\object\encoder.o: ..\Source\pid.h

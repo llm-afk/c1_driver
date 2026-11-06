@@ -36,6 +36,7 @@
 .\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\motor_ctrl.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\motor_ctrl.o: ..\Source\current_sample_window.h
 .\object\motor_ctrl.o: ..\Source\od.h
 .\object\motor_ctrl.o: ..\Source\torque_calib.h
 .\object\motor_ctrl.o: ..\Source\pid.h

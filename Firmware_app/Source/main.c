@@ -269,7 +269,9 @@ static void TIMER0_init(void)
     timer_channel_output_mode_config(TIMER0, TIMER_CH_2, TIMER_OC_MODE_PWM0);
     timer_channel_output_shadow_config(TIMER0, TIMER_CH_2, TIMER_OC_SHADOW_ENABLE);
 
-    timer_channel_output_pulse_value_config(TIMER0, TIMER_CH_3, (PWM_PERIOD_CYCLES_DIV - 5));
+    /* Use legacy timing until OD_init resolves the hardware branch from SN. */
+    timer_channel_output_pulse_value_config(TIMER0, TIMER_CH_3,
+                                           PWM_PERIOD_CYCLES_DIV - CURRENT_SAMPLE_LEGACY_ADVANCE_TICKS);
     timer_channel_output_mode_config(TIMER0, TIMER_CH_3, TIMER_OC_MODE_PWM1);
     timer_channel_output_shadow_config(TIMER0, TIMER_CH_3, TIMER_OC_SHADOW_DISABLE);
 

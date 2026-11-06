@@ -35,6 +35,7 @@
 .\object\main.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\main.o: ..\Source\soc.h
 .\object\main.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\main.o: ..\Source\current_sample_window.h
 .\object\main.o: ..\Source\od.h
 .\object\main.o: ..\Source\torque_calib.h
 .\object\main.o: ..\Source\encoder.h

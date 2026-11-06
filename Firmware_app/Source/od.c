@@ -4,6 +4,7 @@
 #include "eeprom_emul.h"
 #include "com_can.h"
 #include "version.h"
+#include "soc.h"
 
 
 typedef struct {
@@ -268,6 +269,7 @@ void OD_check_sn(void)
         ERROR_CLR(ERR_NO_SN);
         HW_Config_Init(determined_branch);
     }
+    SOC_config_current_sampling(determined_branch);
 }
 
 void OD_init(void)
@@ -1168,7 +1170,7 @@ void HW_Config_Init(eBranchType branch)
             ODObjs.polarity   = 1;
             ODObjs.over_temp_drv_level   = 85.0f;
             ODObjs.over_temp_motor_level = 150.0f;
-            ODObjs.torque_limit          = 100.0f;
+            ODObjs.torque_limit          = 90.0f;
             ODObjs.peak_iq_current       = 90.0f;
             break;
         }
@@ -1188,7 +1190,7 @@ void HW_Config_Init(eBranchType branch)
             ODObjs.polarity   = 1;
             ODObjs.over_temp_drv_level   = 85.0f;
             ODObjs.over_temp_motor_level = 150.0f;
-            ODObjs.torque_limit          = 90.0f;
+            ODObjs.torque_limit          = 40.0f;
             ODObjs.peak_iq_current       = 90.0f;
             break;
         }

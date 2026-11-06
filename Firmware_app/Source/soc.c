@@ -5,6 +5,22 @@ int16_t  phase_a_adc_offset = 0;
 int16_t  phase_b_adc_offset = 0;
 int16_t  phase_c_adc_offset = 0;
 
+volatile uint8_t g_current_sample_window_enabled = 0u;
+
+/* Called after SN decoding; TIMER0 must already be initialized. */
+void SOC_config_current_sampling(eBranchType branch)
+{
+    uint32_t primask = __get_PRIMASK();
+    /* Keep trigger timing and ISR window selection consistent. */
+    __disable_irq();
+    g_current_sample_window_enabled = (branch == BRANCH_A2_XINZHI);
+    timer_channel_output_pulse_value_config(TIMER0, TIMER_CH_3,
+        PWM_PERIOD_CYCLES_DIV - (g_current_sample_window_enabled
+            ? CURRENT_SAMPLE_TRIGGER_ADVANCE_TICKS
+            : CURRENT_SAMPLE_LEGACY_ADVANCE_TICKS));
+    __set_PRIMASK(primask);
+}
+
 void SOC_init(void)
 {
     // systick

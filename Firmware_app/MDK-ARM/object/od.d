@@ -40,6 +40,7 @@
 .\object\od.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_usart.h
 .\object\od.o: ..\GD32C10x_standard_peripheral\Include\gd32c10x_wwdgt.h
 .\object\od.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\object\od.o: ..\Source\current_sample_window.h
 .\object\od.o: ..\Source\pid.h
 .\object\od.o: ..\Source\Eeprom\Core\eeprom_emul.h
 .\object\od.o: ..\Source\Eeprom\Core\eeprom_emul_conf.h

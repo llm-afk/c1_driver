@@ -36,6 +36,7 @@
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\object\com_can.o: D:\Program Files\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\object\com_can.o: ..\Source\current_sample_window.h
 .\object\com_can.o: ..\Source\od.h
 .\object\com_can.o: ..\Source\torque_calib.h
 .\object\com_can.o: ..\Source\motor_ctrl.h
