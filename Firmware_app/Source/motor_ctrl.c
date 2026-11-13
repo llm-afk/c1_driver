@@ -51,7 +51,7 @@ static void servo_loop(void);
 #define R_KALMAN_Q           (3e-7f)     // 过程噪声 @1kHz
 #define R_KALMAN_R_BASE      (0.01f)     // 测量噪声基值 @I=1A
 #define R_EST_I_MIN2         (100.0f)    // I²阈值=|I|<10A→冷却
-#define R_EST_OUTPUT_W_MAX   (0.05f)     // [输出轴 rad/s] 估温速度门槛
+#define R_EST_OUTPUT_W_MAX   (0.04f)     // [输出轴 rad/s] 估温速度门槛
 #define R_COOLING_ALPHA      (0.5e-5f)   // 冷却衰减 @1kHz
 #define TEMP_LP_ALPHA        (1e-3f)     // 温度低通 @1kHz（τ≈1s）
 #define R_EST_RAW_TEMP_STEP  (10.0f)     // @1kHz允许的原始温度最大跳变
@@ -61,6 +61,8 @@ static void servo_loop(void);
 
 /* A2_XINZHI test calibration: 40% more estimated rise above 25 C. */
 #define A2_XINZHI_TEMP_RISE_GAIN (1.40f)
+#define A2_XINZHI_R_EST_TORQUE_MIN (50.0f) // [Nm] calculated output torque
+#define A2_XINZHI_R_EST_OUTPUT_W_MAX (0.03f) // [output shaft rad/s]
 
 // CAN ACK 测试：1=100Hz 发送无人应答帧，观察 TEC/REC
 #define CAN_ACK_TEST         0
@@ -133,13 +135,19 @@ static void estimate_phase_resistance(void)
     static uint8_t raw_temp_anomaly_count = 0;
     p += R_KALMAN_Q;
 
-    // 堵转条件持续100ms后才启用Kalman，滤除瞬态误判
+    // 堵转条件持续200ms后才启用Kalman，滤除瞬态误判
     static uint16_t stall_hold_tick = 0;
-    // Convert the shared output-shaft limit to the PLL's electrical rad/s.
-    const float phase_speed_limit = R_EST_OUTPUT_W_MAX * MOTOR_POLE_PAIRS * g_gear_ratio;
-    if(I2 >= R_EST_I_MIN2 && fabsf(Encoder.phase_vel) < phase_speed_limit)
+    const bool is_a2_xinzhi = (g_current_branch == BRANCH_A2_XINZHI);
+    const float output_speed_limit = is_a2_xinzhi
+        ? A2_XINZHI_R_EST_OUTPUT_W_MAX : R_EST_OUTPUT_W_MAX;
+    // Use the same measured-Iq calibration as torque feedback, not the command.
+    const bool torque_ready = !is_a2_xinzhi ||
+        fabsf(IQ_TO_TORQUE(Iq)) >= A2_XINZHI_R_EST_TORQUE_MIN;
+    // Convert the output-shaft limit to the PLL's electrical rad/s.
+    const float phase_speed_limit = output_speed_limit * MOTOR_POLE_PAIRS * g_gear_ratio;
+    if(I2 >= R_EST_I_MIN2 && torque_ready && fabsf(Encoder.phase_vel) < phase_speed_limit)
     {
-        if(stall_hold_tick < 100) {
+        if(stall_hold_tick < 200) {
             stall_hold_tick++;
         }
     }
@@ -150,7 +158,7 @@ static void estimate_phase_resistance(void)
         raw_temp_anomaly_count = 0;
     }
 
-    if(stall_hold_tick >= 100)
+    if(stall_hold_tick >= 200)
     {
         // 反电动势/换相瞬态可能使 R_raw 瞬间异常；只检查温度变化率。
         bool raw_valid = false;
@@ -1508,7 +1516,8 @@ void MC_high_priority_task(void)
     // 2KHz
     if(tick == 0)
     {
-        EX_ENCODER_VALUE = ENCODER_EX_read();
+        int32_t ex_raw = ENCODER_EX_read();
+        if (ex_raw >= 0) EX_ENCODER_VALUE = ex_raw;
         motor_mit_control();
         servo_loop();
     }

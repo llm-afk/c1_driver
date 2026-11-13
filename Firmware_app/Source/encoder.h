@@ -73,6 +73,7 @@ float get_angular_velocity_rads_v3(uint16_t current_position, int64_t delta_time
 
 //uint16_t ENCODER_slip_check(float tolerance_rad);
 
+/* Last parity-valid raw angle; -1 until the first valid frame. */
 int32_t ENCODER_EX_read(void);
 int32_t ENCODER_read(void);
 void ENCODER_loop(void);

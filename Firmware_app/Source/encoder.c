@@ -304,14 +304,26 @@ void ENCODER_calib_loop(float dt)
     if(Encoder.raw < in_min) in_min = Encoder.raw;
     
     int32_t ex_raw = ENCODER_EX_read();
-    if(ex_raw > ex_max) ex_max = ex_raw;
-    if(ex_raw < ex_min) ex_min = ex_raw;
+    if(ex_raw >= 0) {
+        if(ex_raw > ex_max) ex_max = ex_raw;
+        if(ex_raw < ex_min) ex_min = ex_raw;
+    }
 
     Encoder.Calib.loop_count ++;
 }
 
+static bool mt6816_parity_valid(uint16_t data)
+{
+    data ^= data >> 8;
+    data ^= data >> 4;
+    data ^= data >> 2;
+    data ^= data >> 1;
+    return (data & 1u) == 0u;
+}
+
 int32_t ENCODER_EX_read(void)
 {
+    static int32_t last_valid_angle = -1;
     uint16_t data[2];
     uint16_t sample_data;
     
@@ -329,11 +341,15 @@ int32_t ENCODER_EX_read(void)
     
     sample_data = ((data[0] & 0x00FF) << 8) | (data[1] & 0x00FF);
     
-    return (sample_data >> 2);
+    if (mt6816_parity_valid(sample_data)) {
+        last_valid_angle = sample_data >> 2;
+    }
+    return last_valid_angle;
 }
 
 int32_t ENCODER_read(void)
 {
+    static int32_t last_valid_angle = -1;
     uint16_t data[2];
     uint16_t sample_data;
     
@@ -351,7 +367,10 @@ int32_t ENCODER_read(void)
     
     sample_data = ((data[0] & 0x00FF) << 8) | (data[1] & 0x00FF);
     
-    return (sample_data >> 2);
+    if (mt6816_parity_valid(sample_data)) {
+        last_valid_angle = sample_data >> 2;
+    }
+    return last_valid_angle;
 }
 float raw_rad_data = 0.0f;
 	int init_in;
@@ -509,10 +528,10 @@ void multi_encoder(void)
 
     if(init == 0)
     {
-        init = 1;
         int32_t in_off = IN_ENCODER_OFFSET;
         int32_t ex_off = EX_ENCODER_OFFSET;
         int32_t ex_raw = ENCODER_EX_read();
+        if (ex_raw < 0) return;
         
         if (ODObjs.polarity) {
             ex_raw = ENCODER_CPR - 1 - ex_raw;
@@ -524,6 +543,7 @@ void multi_encoder(void)
         int16_t enc_err = enc_err_mes - enc_err_config;  
         
         pos_fast_offset = enc_err / ((((float)g_multi_sec_gear - (float)g_multi_pri_gear) / (float)g_multi_sec_gear) * 65536.0f) * M_2PI; // 计算出转子上电瞬间相对零点的偏移
+        init = 1;
     }
 
     // 计算角度增量
@@ -559,7 +579,9 @@ void ENCODER_loop(void)
 //		return;
 //	}
 //
-    Encoder.raw = ENCODER_read();
+    int32_t raw = ENCODER_read();
+    if (raw < 0) return;
+    Encoder.raw = raw;
     if (Encoder.Config.encoder_reverse) {
         Encoder.raw = ENCODER_CPR - 1 - Encoder.raw;
     }
