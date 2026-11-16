@@ -51,6 +51,7 @@ static void servo_loop(void);
 #define R_KALMAN_Q           (3e-7f)     // 过程噪声 @1kHz
 #define R_KALMAN_R_BASE      (0.01f)     // 测量噪声基值 @I=1A
 #define R_EST_I_MIN2         (100.0f)    // I²阈值=|I|<10A→冷却
+#define C2_PRO_XINZHI_R_EST_I_MIN2 (900.0f) // [A^2] squared d-q current, strictly >30 A
 #define R_EST_OUTPUT_W_MAX   (0.04f)     // [输出轴 rad/s] 估温速度门槛
 #define R_COOLING_ALPHA      (0.5e-5f)   // 冷却衰减 @1kHz
 #define TEMP_LP_ALPHA        (1e-3f)     // 温度低通 @1kHz（τ≈1s）
@@ -143,9 +144,11 @@ static void estimate_phase_resistance(void)
     // Use the same measured-Iq calibration as torque feedback, not the command.
     const bool torque_ready = !is_a2_xinzhi ||
         fabsf(IQ_TO_TORQUE(Iq)) >= A2_XINZHI_R_EST_TORQUE_MIN;
+    const bool current_ready = (g_current_branch == BRANCH_C2_PRO_XINZHI)
+        ? I2 > C2_PRO_XINZHI_R_EST_I_MIN2 : I2 >= R_EST_I_MIN2;
     // Convert the output-shaft limit to the PLL's electrical rad/s.
     const float phase_speed_limit = output_speed_limit * MOTOR_POLE_PAIRS * g_gear_ratio;
-    if(I2 >= R_EST_I_MIN2 && torque_ready && fabsf(Encoder.phase_vel) < phase_speed_limit)
+    if(current_ready && torque_ready && fabsf(Encoder.phase_vel) < phase_speed_limit)
     {
         if(stall_hold_tick < 200) {
             stall_hold_tick++;

@@ -1177,7 +1177,7 @@ void HW_Config_Init(eBranchType branch)
         case BRANCH_A2_JIEKE_WHEEL:
         {
             g_i_scale               = 7.5f;
-            g_encoder_calib_current = 10.0f;
+            g_encoder_calib_current = 20.0f;
             g_gear_ratio            = 5.0f;
             g_multi_pri_gear        = 32;
             g_multi_sec_gear        = 31; // ±3.1 圈  ±19.478rad (负载端)
