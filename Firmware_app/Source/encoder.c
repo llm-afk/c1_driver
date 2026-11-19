@@ -68,9 +68,17 @@ void ENCODER_calib_end(void)
     // 故意留空：如果校准失败报错了，让红灯一直挂着，直到下次重新校准
 }
 
+/* Signed travel of the same shaft over the same interval, in encoder counts.
+ * Accept 50..150% of expected travel; a fixed load angle cancels out. */
+static bool calib_travel_matches(int expected, int measured)
+{
+    return expected != 0 && 2 * ABS(measured - expected) <= ABS(expected);
+}
+
 void ENCODER_calib_loop(float dt)
 {
     static int count_raw_start;
+    static int prev_raw, prev_ref, tracking_ok, tracking_total;
     static int32_t in_max = 0;
     static int32_t in_min = 16383;
     static int32_t ex_max = 0;
@@ -87,6 +95,7 @@ void ENCODER_calib_loop(float dt)
         case 0: // Init
             Encoder.Calib.phase_set = 0;
             Encoder.Calib.loop_count = 0;
+            tracking_ok = tracking_total = 0;
             in_max = 0;
             in_min = 16383;
             ex_max = 0;
@@ -147,6 +156,19 @@ void ENCODER_calib_loop(float dt)
                     int error = Encoder.raw - count_ref;
                     error += ENCODER_CPR * (error<0);
                     Encoder.Calib.errors[Encoder.Calib.sample_count] = error;
+
+                    /* Same field phase one electrical turn apart, after direction calibration. */
+                    if (Encoder.Calib.sample_count % SAMPLES_PER_PPAIR == 0) {
+                        if (Encoder.Calib.sample_count != 0) {
+                            int travel = Encoder.raw - prev_raw;
+                            if (travel > ENCODER_CPR_DIV) travel -= ENCODER_CPR;
+                            else if (travel < -ENCODER_CPR_DIV) travel += ENCODER_CPR;
+                            tracking_ok += calib_travel_matches(count_ref - prev_ref, travel);
+                            tracking_total++;
+                        }
+                        prev_raw = Encoder.raw;
+                        prev_ref = count_ref;
+                    }
                     
                     Encoder.Calib.sample_count ++;
                 }
@@ -205,26 +227,14 @@ void ENCODER_calib_loop(float dt)
             
         case 8: // Calculate
             {
-                // Missing Magnet Check (half a turn = 8192 counts)
-                if(g_current_branch == BRANCH_A2_JIEKE_WHEEL)
-                {
-                    if((in_max - in_min) < 8192)
-                    {
-                        COM_CAN_report_err(ERR_ENC_MISSING);
-                        Encoder.Config.calib_valid = false;
-                        Encoder.Calib.calib_step = 9;
-                        break;
-                    }
-                }
-                else
-                {
-                    if((in_max - in_min) < 8192 || (ex_max - ex_min) < 8192)
-                    {
-                        COM_CAN_report_err(ERR_ENC_MISSING);
-                        Encoder.Config.calib_valid = false;
-                        Encoder.Calib.calib_step = 9;
-                        break;
-                    }
+                /* Tolerate occasional sticking/catch-up: require 70% matching intervals. */
+                if (tracking_total == 0 || 10 * tracking_ok < 7 * tracking_total ||
+                    (in_max - in_min) < ENCODER_CPR_DIV ||
+                    (g_current_branch != BRANCH_A2_JIEKE_WHEEL && (ex_max - ex_min) < ENCODER_CPR_DIV)) {
+                    COM_CAN_report_err(ERR_ENC_MISSING);
+                    Encoder.Config.calib_valid = false;
+                    Encoder.Calib.calib_step = 9;
+                    break;
                 }
 
                 // Calculate average offset
